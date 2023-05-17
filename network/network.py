@@ -50,6 +50,15 @@ class Network(object):
             [c_EE.W, c_EI.W],
             [c_IE.W, c_II.W]
         ]).tocsr()
+        
+        # Note W1, W2
+        self.W1 = scipy.sparse.bmat([
+            [c_EE.W]
+        ]).tocsr()
+        self.W2 = scipy.sparse.bmat([
+            [c_EI.W]
+        ]).tocsr()
+        
         if inh:
             self.W_EI = c_EI.W
             self.W_IE = c_IE.W
@@ -80,7 +89,8 @@ class RateNetwork(Network):
             self._fun = self._fun2
         elif self.formulation == 3:
             self._fun = self._fun3
-
+    
+    
     def simulate(self, t, r0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         """
         Runge-Kutta 2nd order
@@ -143,22 +153,45 @@ class RateNetwork(Network):
     def add_noise(self, xi, pop):
         self.xi = xi
 
-    def _fun1(self, pbar, t_max):
-        def f(t, r, return_field=False):
+#     def _fun1(self, pbar, t_max):
+#         def f(t, r, return_field=False):
+#             """
+#             Rate formulation 1
+#             """
+#             # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
+
+#             pbar.update(t%t_max)
+
+#             if self.inh:
+#                 raise NotImplemented
+#             else:
+#                 phi_r = self.exc.phi
+#             r_ext = self.r_ext
+#             r_sum = phi_r(self.W.dot(r) + r_ext(t))
+#             dr = (-r + r_sum) / self.tau
+#             if return_field:
+#                 return dr, r_sum
+#             else:
+#                 return dr
+#         return f
+    
+    def _fun1(self, t_max):
+        def f(t, r1, r2, return_field=False):
             """
             Rate formulation 1
             """
             # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
 
-            pbar.update(t%t_max)
+#             pbar.update(t%t_max)
 
             if self.inh:
                 raise NotImplemented
             else:
                 phi_r = self.exc.phi
-            r_ext = self.r_ext
-            r_sum = phi_r(self.W.dot(r) + r_ext(t))
-            dr = (-r + r_sum) / self.tau
+            
+            r_sum =  phi_r(self.W1.dot(r1) + self.W2.dot(r2))
+                              
+            dr = (-r1 + r_sum) / self.tau
             if return_field:
                 return dr, r_sum
             else:

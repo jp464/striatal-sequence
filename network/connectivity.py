@@ -24,21 +24,40 @@ class Connectivity(object):
         raise NotImplementedError
 
     @staticmethod
-    def _store_sequences(ij, inputs, f, g, disable_pbar=False):
+    def _store_sequences(ij, inputs, f, g, seq, disable_pbar=False):
         """
         inputs: S x P x N
         Store heteroassociative connectivity
         """
-        S, P, N  = inputs.shape
+#         S, P, N  = inputs.shape
+#         row = []
+#         col = []
+#         data = []
+#         for n in trange(len(inputs), disable=disable_pbar):
+#             seq = inputs[n]
+#             for j in trange(seq.shape[1], disable=disable_pbar):
+#                 i = ij[j]
+#                 # $f(xi_i^{\mu+1}) * g(xi_j^{\mu})$
+#                 w = np.sum(f(seq[1:,i]) * g(seq[:-1,j][:,np.newaxis]), axis=0) 
+#                 row.extend(i)
+#                 col.extend([j]*len(i))
+#                 data.extend(w)
+#         return data, row, col
+        post, pre = inputs
+        S, P, N  = post.shape
         row = []
         col = []
         data = []
-        for n in trange(len(inputs), disable=disable_pbar):
-            seq = inputs[n]
-            for j in trange(seq.shape[1], disable=disable_pbar):
+        for n in trange(len(post), disable=disable_pbar):
+            seq_post = post[n]
+            seq_pre = pre[n]
+            for j in trange(seq_post.shape[1], disable=disable_pbar):
                 i = ij[j]
                 # $f(xi_i^{\mu+1}) * g(xi_j^{\mu})$
-                w = np.sum(f(seq[1:,i]) * g(seq[:-1,j][:,np.newaxis]), axis=0) 
+                if seq:
+                    w = np.sum(f(seq_post[1:,i]) * g(seq_pre[:-1,j][:,np.newaxis]), axis=0) 
+                else:
+                    w = np.sum(f(seq_post[:,i]) * g(seq_pre[:,j][:,np.newaxis]), axis=0)  
                 row.extend(i)
                 col.extend([j]*len(i))
                 data.extend(w)
@@ -62,6 +81,7 @@ class Connectivity(object):
             col.extend([j]*len(i))
             data.extend(w)
         return data, row, col
+
 
     @staticmethod
     def _set_all(ij, value):
@@ -103,10 +123,10 @@ class SparseConnectivity(Connectivity):
 
         self.ij = func(source.size, target.size)
 
-    def store_sequences(self, inputs, h=lambda x:x, f=lambda x:x, g=lambda x:x):
-        N = inputs.shape[2]
+    def store_sequences(self, inputs, h=lambda x:x, f=lambda x:x, g=lambda x:x, seq=True):
+        N = inputs[0].shape[2]
         logger.info("Storing sequences")
-        data, row, col = Connectivity._store_sequences(self.ij, inputs, f, g, self.disable_pbar)
+        data, row, col = Connectivity._store_sequences(self.ij, inputs, f, g, seq, self.disable_pbar)
         logger.info("Applying synaptic transfer function")
         #pdb.set_trace()
         data = h(data)
