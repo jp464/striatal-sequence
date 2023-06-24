@@ -24,40 +24,22 @@ class Connectivity(object):
         raise NotImplementedError
 
     @staticmethod
-    def _store_sequences(ij, inputs, f, g, seq, disable_pbar=False):
+    def _store_sequences(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):
         """
         inputs: S x P x N
         Store heteroassociative connectivity
         """
-#         S, P, N  = inputs.shape
-#         row = []
-#         col = []
-#         data = []
-#         for n in trange(len(inputs), disable=disable_pbar):
-#             seq = inputs[n]
-#             for j in trange(seq.shape[1], disable=disable_pbar):
-#                 i = ij[j]
-#                 # $f(xi_i^{\mu+1}) * g(xi_j^{\mu})$
-#                 w = np.sum(f(seq[1:,i]) * g(seq[:-1,j][:,np.newaxis]), axis=0) 
-#                 row.extend(i)
-#                 col.extend([j]*len(i))
-#                 data.extend(w)
-#         return data, row, col
-        post, pre = inputs
-        S, P, N  = post.shape
+        S, P, N  = inputs_post.shape
         row = []
         col = []
         data = []
-        for n in trange(len(post), disable=disable_pbar):
-            seq_post = post[n]
-            seq_pre = pre[n]
+        for n in trange(len(inputs_post), disable=disable_pbar):
+            seq_pre = inputs_pre[n]
+            seq_post = inputs_post[n]
             for j in trange(seq_post.shape[1], disable=disable_pbar):
                 i = ij[j]
                 # $f(xi_i^{\mu+1}) * g(xi_j^{\mu})$
-                if seq:
-                    w = np.sum(f(seq_post[1:,i]) * g(seq_pre[:-1,j][:,np.newaxis]), axis=0) 
-                else:
-                    w = np.sum(f(seq_post[:,i]) * g(seq_pre[:,j][:,np.newaxis]), axis=0)  
+                w = np.sum(f(seq_post[1:,i]) * g(seq_pre[:-1,j][:,np.newaxis]), axis=0) 
                 row.extend(i)
                 col.extend([j]*len(i))
                 data.extend(w)
@@ -65,23 +47,22 @@ class Connectivity(object):
 
 
     @staticmethod
-    def _store_attractors(ij, inputs, f, g, disable_pbar=False):
+    def _store_attractors(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):
         """
         inputs: P x N
         Store autoassociative connectivity
         """
-        P, N  = inputs.shape
+        P, N  = inputs_post.shape
         row = []
         col = []
         data = []
-        for j in trange(inputs.shape[1], disable=disable_pbar):
+        for j in trange(inputs_post.shape[1], disable=disable_pbar):
             i = ij[j]
-            w = np.sum(f(inputs[:,i]) * g(inputs[:,j][:,np.newaxis]), axis=0) 
+            w = np.sum(f(inputs_post[:,i]) * g(inputs_pre[:,j][:,np.newaxis]), axis=0) 
             row.extend(i)
             col.extend([j]*len(i))
             data.extend(w)
         return data, row, col
-
 
     @staticmethod
     def _set_all(ij, value):
@@ -123,10 +104,10 @@ class SparseConnectivity(Connectivity):
 
         self.ij = func(source.size, target.size)
 
-    def store_sequences(self, inputs, h=lambda x:x, f=lambda x:x, g=lambda x:x, seq=True):
-        N = inputs[0].shape[2]
+    def store_sequences(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+        N = inputs_post.shape[2]
         logger.info("Storing sequences")
-        data, row, col = Connectivity._store_sequences(self.ij, inputs, f, g, seq, self.disable_pbar)
+        data, row, col = Connectivity._store_sequences(self.ij, inputs_pre, inputs_post, f, g, self.disable_pbar)
         logger.info("Applying synaptic transfer function")
         #pdb.set_trace()
         data = h(data)
@@ -134,9 +115,9 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
 
-    def store_attractors(self, inputs, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+    def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         logger.info("Storing attractors")
-        data, row, col = Connectivity._store_attractors(self.ij, inputs, f, g, self.disable_pbar)
+        data, row, col = Connectivity._store_attractors(self.ij, inputs_pre, inputs_post, f, g, self.disable_pbar)
         data = h(data)
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
@@ -205,7 +186,6 @@ class ThresholdPlasticityRule(object):
         self.x_g, self.q_g = x_g, q_g
         self.f = lambda x: np.where(x < x_f, -(1-q_f), q_f)
         self.g = lambda x: np.where(x < x_g, -(1-q_g), q_g)
-
 
 class SynapticTransferFunction(object):
     def __init__(self, K):
