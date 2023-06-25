@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from scipy.stats import pearsonr
+ssedsdsddd
 from tqdm import tqdm
 from helpers import spike_to_rate
 

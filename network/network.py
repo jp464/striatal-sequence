@@ -8,6 +8,7 @@ import progressbar
 from numba import jit, njit
 from connectivity import Connectivity
 from helpers import spike_to_rate
+from scipy.stats import pearsonr
 
 logger = logging.getLogger(__name__)
 
@@ -80,24 +81,64 @@ class RateNetwork(Network):
             self._fun = self._fun2
         elif self.formulation == 3:
             self._fun = self._fun3
+        elif self.formulation == 4:
+            self._fun = self._fun4
             
-    def simulate_euler2(self, t, r0, t0=0, dt=1e-3, r_ext=lambda t: 0, noise=0):
+    def simulate_learning(self, net2, t, r1, r2, patterns, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
+        
         if self.disable_pbar:
             pbar = progressbar.NullBar()
-            fun = self._fun(pbar,t)
+            fun = self._fun(net2, pbar,t)
         else:
-            fun = self._fun(tqdm(total=int(t/dt)-1),t)
+            fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
             
         self.r_ext = r_ext
-        state = np.zeros((self.exc.size, int((t-t0)/dt)))
-        state[:,0] = r0
+        state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
+        state1[:,0] = r1
+        state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
+        state2[:,0] = r2
+                         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            r = state[:,i]
-            dr = fun(i, r)
-            state[:,i+1] = state[:,i] + dt * dr + np.random.RandomState().normal(0,1,size=dr.shape) * noise * dt
-        self.exc.state = np.hstack([self.exc.state, state[:self.exc.size,:]])
+            cur1, cur2 = state1[:,i], state2[:,i]
+            dr1, dr2 = fun(i, cur1, cur2)
+            state1[:,i+1] = state1[:,i] + dt * dr1 
+            state2[:,i+1] = state2[:,i] + dt * dr2
+        
+        correlations = np.zeros(3)
+        for p in patterns:
+            correlations.append(pearsonr(state1[:,i+1], p))
+         print(correlations)        
+        np.asarray([pearsonr(pattern, rate[:,t])[0] for t in range(rate.shape[1])])
+            
+        self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
+        net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
+        
+    def simulate_euler2(self, net2, t, r1, r2, t0=0, dt=1e-3, r_ext=lambda t: 0):
+        logger.info("Integrating network dynamics")
+        
+        if self.disable_pbar:
+            pbar = progressbar.NullBar()
+            fun = self._fun(net2, pbar,t)
+        else:
+            fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
+            
+        self.r_ext = r_ext
+        state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
+        state1[:,0] = r1
+        state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
+        state2[:,0] = r2
+                         
+        for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
+            cur1, cur2 = state1[:,i], state2[:,i]
+            dr1, dr2 = fun(i, cur1, cur2)
+            state1[:,i+1] = state1[:,i] + dt * dr1 
+            state2[:,i+1] = state2[:,i] + dt * dr2
+            
+        self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
+        net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]])
 
+        
     def simulate(self, t, r0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         """
         Runge-Kutta 2nd order
@@ -226,7 +267,32 @@ class RateNetwork(Network):
 
             return dr
         return f
+    
+    def _fun4(self, net2, pbar, t_max):
+        def f(t, r1, r2, return_field=False):
+            """
+            Rate formulation 1
+            """
+            # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
+            pbar.update(1)
 
+            if self.inh:
+                raise NotImplemented
+            else:
+                phi_r = self.exc.phi
+            r_ext = self.r_ext
+            r_sum1 = phi_r(self.W[0:1000].dot(r1) + net2.W[0:1000].dot(r2) + r_ext(t))
+            r_sum2 = phi_r(self.W[1000:2000].dot(r1) + net2.W[1000:2000].dot(r2) + r_ext(t)) + np.random.RandomState().normal(0,1,size=r1.shape) * 15
+            dr1 = (-r1 + r_sum1) / self.tau
+            dr2 = (-r2 + r_sum2) / self.tau
+
+            if return_field:
+                return dr, r_sum
+            else:
+                return dr1, dr2
+
+        return f
+    
     def overlap_with(self, vec, pop, spikes=False):
         """
         Compute the overlap of network activity with a given input vector
