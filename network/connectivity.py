@@ -45,6 +45,23 @@ class Connectivity(object):
                 data.extend(w)
         return data, row, col
 
+    @staticmethod
+    def _update_sequences(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):
+        """
+        inputs: S x P x N
+        Store heteroassociative connectivity
+        """
+        N  = inputs_post.shape[0]
+        row = []
+        col = []
+        data = []
+        for j in trange(N, disable=disable_pbar):
+            i = ij[j]
+            w = f(inputs_post[i]) * g(inputs_pre[j])
+            row.extend(i)
+            col.extend([j]*len(i))
+            data.extend(w)
+        return data, row, col 
 
     @staticmethod
     def _store_attractors(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):
@@ -83,6 +100,7 @@ class SparseConnectivity(Connectivity):
         self.p = p
         self.K = p*target.size
         self.ij = []
+        self.data0 = 0
         self.disable_pbar = disable_pbar
         logger.info("Building connections from %s to %s" % (source.name, target.name))
         if fixed_degree:
@@ -114,6 +132,14 @@ class SparseConnectivity(Connectivity):
         logger.info("Building sparse matrix")
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
+    
+    def update_sequences(self, inputs_pre, inputs_post, Q, lamb=0.9, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+        N = inputs_post.shape[0]
+#         logger.info("Updating network")
+        data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, self.disable_pbar)
+        data = np.asarray(data) / self.K
+        W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
+        self.W = lamb * self.W + Q * W.tocsr()
 
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         logger.info("Storing attractors")

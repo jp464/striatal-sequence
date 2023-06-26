@@ -84,7 +84,7 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, net2, t, r1, r2, patterns, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_learning(self, net2, t, r1, r2, patterns, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -98,23 +98,32 @@ class RateNetwork(Network):
         state1[:,0] = r1
         state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
         state2[:,0] = r2
+        behaviors = np.zeros(int((t-t0)/dt))
+        correlations = [pearsonr(state1[:,0], p)[0] for p in patterns]
+
+        if np.max(correlations) > 0.5:
+            behaviors[0] = np.argmax(correlations)
+        else:
+            behaviors[0] = -1 
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             cur1, cur2 = state1[:,i], state2[:,i]
-            dr1, dr2 = fun(i, cur1, cur2)
+            dr1, dr2 = fun(i, cur1, cur2, noise)
             state1[:,i+1] = state1[:,i] + dt * dr1 
-            state2[:,i+1] = state2[:,i] + dt * dr2
-        
-        correlations = np.zeros(3)
-        for p in patterns:
-            correlations.append(pearsonr(state1[:,i+1], p))
-         print(correlations)        
-        np.asarray([pearsonr(pattern, rate[:,t])[0] for t in range(rate.shape[1])])
+            state2[:,i+1] = state2[:,i] + dt * dr2  
+            
+            correlations = [pearsonr(state1[:,i], p)[0] for p in patterns]
+            if np.max(correlations) > 0.5:
+                behaviors[i+1] = np.argmax(correlations)
+            else:
+                behaviors[i+1] = -1 
             
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
         
-    def simulate_euler2(self, net2, t, r1, r2, t0=0, dt=1e-3, r_ext=lambda t: 0):
+        return behaviors
+        
+    def simulate_euler2(self, net2, t, r1, r2, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -131,7 +140,7 @@ class RateNetwork(Network):
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             cur1, cur2 = state1[:,i], state2[:,i]
-            dr1, dr2 = fun(i, cur1, cur2)
+            dr1, dr2 = fun(i, cur1, cur2, noise)
             state1[:,i+1] = state1[:,i] + dt * dr1 
             state2[:,i+1] = state2[:,i] + dt * dr2
             
@@ -269,7 +278,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, net2, pbar, t_max):
-        def f(t, r1, r2, return_field=False):
+        def f(t, r1, r2, noise, return_field=False):
             """
             Rate formulation 1
             """
@@ -282,7 +291,7 @@ class RateNetwork(Network):
                 phi_r = self.exc.phi
             r_ext = self.r_ext
             r_sum1 = phi_r(self.W[0:1000].dot(r1) + net2.W[0:1000].dot(r2) + r_ext(t))
-            r_sum2 = phi_r(self.W[1000:2000].dot(r1) + net2.W[1000:2000].dot(r2) + r_ext(t)) + np.random.RandomState().normal(0,1,size=r1.shape) * 15
+            r_sum2 = phi_r(self.W[1000:2000].dot(r1) + net2.W[1000:2000].dot(r2) + r_ext(t)) + np.random.RandomState().normal(0,1,size=r1.shape) * noise
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau
 
