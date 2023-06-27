@@ -133,7 +133,7 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
     
-    def update_sequences(self, inputs_pre, inputs_post, Q, lamb=0.9, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+    def update_sequences(self, inputs_pre, inputs_post, Q, lamb=0.7, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         N = inputs_post.shape[0]
 #         logger.info("Updating network")
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)

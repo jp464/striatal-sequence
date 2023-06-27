@@ -9,6 +9,7 @@ from numba import jit, njit
 from connectivity import Connectivity
 from helpers import spike_to_rate, determine_action
 from scipy.stats import pearsonr
+from learning import NetworkUpdateRule
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +86,10 @@ class RateNetwork(Network):
             self._fun = self._fun4
             
     def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
-        logger.info("Integrating network dynamics")
         
+        update_rule = NetworkUpdateRule()
+    
+        logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
             fun = self._fun(net2, pbar,t)
@@ -102,6 +105,17 @@ class RateNetwork(Network):
         
         behaviors[0] = determine_action(state1[:,0], patterns_ctx)
         prev_idx = 0 
+        
+        for k in range(3):
+            print("updating")
+            self.c_IE.update_sequences(patterns_ctx[k], patterns_bg[k+1],
+                               5.5, lamb=1,f=plasticity.f, g=plasticity.g)
+            self.W[self.size:self.size*2,:] = self.c_IE.W
+
+        self.c_IE.update_sequences(patterns_ctx[3], patterns_bg[0],
+                           5.5, lamb=1,f=plasticity.f, g=plasticity.g)
+        self.W[self.size:self.size*2,:] = self.c_IE.W
+
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             cur1, cur2 = state1[:,i], state2[:,i]
@@ -123,9 +137,10 @@ class RateNetwork(Network):
                     s1, w1 = mouse.state_transition(s0, a0, w0)
                     mouse.td_learning(s0, a0, w0, s1, a1, w1)
                     if prev_idx > 2:
-                        Q = mouse.Qvalues[uc[0][2],mouse.states.index(uc[0][0]),uc[0][1]] + mouse.Qvalues[uc[1][2],mouse.states.index(uc[1][0]),uc[1][1]]
-                        self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]],
-                                                   Q,f=plasticity.f, g=plasticity.g)
+                        Q = mouse.compute_Qval(uc, f=update_rule.f, rectifier=update_rule.rectifier)
+#                         self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]],
+#                                                    Q,f=plasticity.f, g=plasticity.g)
+                        print(mouse.get_action(uc[0][1]) + "-->" + mouse.actions[uc[1][1]], uc[1][0], str(uc[1][2]), Q)
                     uc = [(s0, a0, w0), (s1, a1, w1)]
                     
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
@@ -298,8 +313,8 @@ class RateNetwork(Network):
             else:
                 phi_r = self.exc.phi
             r_ext = self.r_ext
-            r_sum1 = phi_r(self.W[0:1000].dot(r1) + net2.W[0:1000].dot(r2) + r_ext(t))
-            r_sum2 = phi_r(self.W[1000:2000].dot(r1) + net2.W[1000:2000].dot(r2) + r_ext(t)) + np.random.RandomState().normal(0,1,size=r1.shape) * noise
+            r_sum1 = phi_r(self.W[0:self.size,:].dot(r1) + net2.W[0:self.size,:].dot(r2) + r_ext(t))
+            r_sum2 = phi_r(self.W[self.size:self.size*2,:].dot(r1) + net2.W[self.size:self.size*2,:].dot(r2) + r_ext(t)) + np.random.RandomState().normal(0,1,size=r1.shape) * noise
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau
 

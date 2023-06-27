@@ -11,10 +11,17 @@ class Learning(object):
         self.gamma = gamma 
         self.reward = 0
         self.in_seq = False
+        self.actions = None
+        self.Qvalues = None
     
-    def get_actions(self, s, actions):
-        return actions[s]
-        
+    def get_action(self, s):
+        return self.actions[s]
+    
+    def compute_Qval(self, uc, f=lambda x,y:x+y, rectifier=lambda x:x):
+        Q = f(self.Qvalues[uc[0][2],self.states.index(uc[0][0]),uc[0][1]],
+              self.Qvalues[uc[1][2],self.states.index(uc[1][0]),uc[1][1]])
+        return rectifier(Q)
+    
 class ReachingTask(Learning):
     def __init__(self, goal, alpha=0.2, gamma=0.9, reward=0):
         super().__init__(goal, alpha, gamma)
@@ -54,6 +61,11 @@ class ReachingTask(Learning):
         Q0 = self.Qvalues[w0,s0,a0]
         Q1 = self.Qvalues[w1,s1,a1]
         self.Qvalues[w0,s0,a0] =  Q0 + self.alpha * (self.reward + self.gamma * Q1 - Q0)
+
+class NetworkUpdateRule(object):
+    def __init__(self):
+        self.f = lambda x,y: 0.1 * x + y  
+        self.rectifier = lambda x: 0 if x < 0 else x
         
                 
                 
