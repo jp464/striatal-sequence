@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
 from connectivity import Connectivity
-from helpers import spike_to_rate
+from helpers import spike_to_rate, determine_action
 from scipy.stats import pearsonr
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, mouse, net2, t, r1, r2, patterns, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -98,41 +98,38 @@ class RateNetwork(Network):
         state1[:,0] = r1
         state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
         state2[:,0] = r2
-        behaviors = np.zeros(int((t-t0)/dt))
-        correlations = [pearsonr(state1[:,0], p)[0] for p in patterns]
-
-        if np.max(correlations) > 0.5:
-            behaviors[0] = np.argmax(correlations)
-        else:
-            behaviors[0] = -1 
-                         
+        behaviors = np.zeros(int((t-t0)/dt), dtype=np.int8)
+        
+        behaviors[0] = determine_action(state1[:,0], patterns_ctx)
+        prev_idx = 0 
+        
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             cur1, cur2 = state1[:,i], state2[:,i]
             dr1, dr2 = fun(i, cur1, cur2, noise)
             state1[:,i+1] = state1[:,i] + dt * dr1 
             state2[:,i+1] = state2[:,i] + dt * dr2  
             
-            correlations = [pearsonr(state1[:,i], p)[0] for p in patterns]
-            if np.max(correlations) > 0.5:
-                behaviors[i+1] = np.argmax(correlations)
-            else:
-                behaviors[i+1] = behaviors[i]
-                
-            if i == 0:
-                s1, w1, prev = 'out', 0, None
-            else:
-                s0, w0 = s1, w1
-                a0, a1 = behavior[i-1], behavior[i]
-                mouse. detect_reward(s0, a0, w0)
-                s1, w1 = mouse.state_transition(s0, a0, w0)
-                mouse.td_learning(s0, a0, w0, s1, a1, w1)
-                if i > 1:
-                    print('hello')
-                prev = [(s0, a0, w0), (s1, a1, w1)]
+            cur_action = determine_action(state1[:,i], patterns_ctx)
+            if behaviors[prev_idx] != cur_action and cur_action != -1:
+                prev_idx += 1
+                behaviors[prev_idx] = cur_action
+
+                if prev_idx == 1:
+                    s1, w1 = 'out', 0
+                else:
+                    s0, w0 = s1, w1
+                    a0, a1 = behaviors[prev_idx-1], behaviors[prev_idx]
+                    mouse.detect_reward(s0, a0, w0)
+                    s1, w1 = mouse.state_transition(s0, a0, w0)
+                    mouse.td_learning(s0, a0, w0, s1, a1, w1)
+                    if prev_idx > 2:
+                        Q = mouse.Qvalues[uc[0][2],mouse.states.index(uc[0][0]),uc[0][1]] + mouse.Qvalues[uc[1][2],mouse.states.index(uc[1][0]),uc[1][1]]
+                        self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]],
+                                                   Q,f=plasticity.f, g=plasticity.g)
+                    uc = [(s0, a0, w0), (s1, a1, w1)]
+                    
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
-        
-        return behaviors
         
     def simulate_euler2(self, net2, t, r1, r2, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")

@@ -11,3 +11,9 @@ def spike_to_rate(spikes, window_std=20):
         y = np.convolve(window, spikes[i,:], mode='same')
         estimate[i,:] = y
     return estimate
+
+def determine_action(state, patterns, thres=0.5):
+    correlations = [scipy.stats.pearsonr(state, p)[0] for p in patterns]
+    if np.max(correlations) > thres:
+        return np.argmax(correlations)
+    return -1

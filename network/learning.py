@@ -10,7 +10,6 @@ class Learning(object):
         self.alpha = alpha
         self.gamma = gamma 
         self.reward = 0
-        self.Qvalues = np.array((goal, goal))
         self.in_seq = False
     
     def get_actions(self, s, actions):
@@ -21,8 +20,8 @@ class ReachingTask(Learning):
         super().__init__(goal, alpha, gamma)
         self.states = ['out', 'in']
         self.actions = ['aim', 'reach', 'lick', 'back']
-        self.actions = {'out': ['aim', 'reach', 'lick', 'back'], 
-                        'in': ['aim', 'reach', 'lick', 'back']}
+        self.legal_actions = {'out': [0, 1, 2, 3], 
+                        'in': [0, 1, 2, 3]}
         self.Qvalues = np.zeros((2, 2, 4))
     
     def state_transition(self, s, a, w):
