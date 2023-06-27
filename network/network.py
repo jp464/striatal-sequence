@@ -51,7 +51,7 @@ class Network(object):
         self.W = scipy.sparse.bmat([
             [c_EE.W, c_EI.W],
             [c_IE.W, c_II.W]
-        ]).tocsr()
+        ]).tolil()
         if inh:
             self.W_EI = c_EI.W
             self.W_IE = c_IE.W
