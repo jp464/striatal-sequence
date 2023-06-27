@@ -84,7 +84,7 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, net2, t, r1, r2, patterns, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_learning(self, mouse, net2, t, r1, r2, patterns, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -116,8 +116,19 @@ class RateNetwork(Network):
             if np.max(correlations) > 0.5:
                 behaviors[i+1] = np.argmax(correlations)
             else:
-                behaviors[i+1] = -1 
-            
+                behaviors[i+1] = behaviors[i]
+                
+            if i == 0:
+                s1, w1, prev = 'out', 0, None
+            else:
+                s0, w0 = s1, w1
+                a0, a1 = behavior[i-1], behavior[i]
+                mouse. detect_reward(s0, a0, w0)
+                s1, w1 = mouse.state_transition(s0, a0, w0)
+                mouse.td_learning(s0, a0, w0, s1, a1, w1)
+                if i > 1:
+                    print('hello')
+                prev = [(s0, a0, w0), (s1, a1, w1)]
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
         
