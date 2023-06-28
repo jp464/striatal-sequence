@@ -10,6 +10,7 @@ from connectivity import Connectivity
 from helpers import spike_to_rate, determine_action
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
+from transfer_functions import erf
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class Network(object):
         self.W = scipy.sparse.bmat([
             [c_EE.W, c_EI.W],
             [c_IE.W, c_II.W]
-        ]).tolil()
+        ]).tocsr()
         if inh:
             self.W_EI = c_EI.W
             self.W_IE = c_IE.W
@@ -101,20 +102,20 @@ class RateNetwork(Network):
         state1[:,0] = r1
         state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
         state2[:,0] = r2
-        behaviors = np.zeros(int((t-t0)/dt), dtype=np.int8)
+        mouse.behaviors = np.zeros(int((t-t0)/dt), dtype=np.int8)
         
-        behaviors[0] = determine_action(state1[:,0], patterns_ctx)
+        mouse.behaviors[0] = determine_action(state1[:,0], patterns_ctx)
         prev_idx = 0 
-        
-        for k in range(3):
-            print("updating")
-            self.c_IE.update_sequences(patterns_ctx[k], patterns_bg[k+1],
-                               5.5, lamb=1,f=plasticity.f, g=plasticity.g)
-            self.W[self.size:self.size*2,:] = self.c_IE.W
 
-        self.c_IE.update_sequences(patterns_ctx[3], patterns_bg[0],
-                           5.5, lamb=1,f=plasticity.f, g=plasticity.g)
-        self.W[self.size:self.size*2,:] = self.c_IE.W
+#         self.c_IE.update_sequences(patterns_ctx[1], patterns_bg[2],
+#                            3.5, lamb=1,f=plasticity.f, g=plasticity.g)
+#         self.W[self.size:self.size*2,:] = self.c_IE.W
+#         self.c_IE.update_sequences(patterns_ctx[2], patterns_bg[3],
+#                            3.5, lamb=1,f=plasticity.f, g=plasticity.g)
+#         self.W[self.size:self.size*2,:] = self.c_IE.W
+#         self.c_IE.update_sequences(patterns_ctx[3], patterns_bg[1],
+#                            3.5, lamb=1,f=plasticity.f, g=plasticity.g)
+#         self.W[self.size:self.size*2,:] = self.c_IE.W
 
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
@@ -124,22 +125,27 @@ class RateNetwork(Network):
             state2[:,i+1] = state2[:,i] + dt * dr2  
             
             cur_action = determine_action(state1[:,i], patterns_ctx)
-            if behaviors[prev_idx] != cur_action and cur_action != -1:
+            if mouse.behaviors[prev_idx] != cur_action and cur_action != -1:
+                if cur_action == 2 and mouse.behaviors[prev_idx] != 1:
+                    continue
                 prev_idx += 1
-                behaviors[prev_idx] = cur_action
+                mouse.behaviors[prev_idx] = cur_action
 
                 if prev_idx == 1:
                     s1, w1 = 'out', 0
                 else:
                     s0, w0 = s1, w1
-                    a0, a1 = behaviors[prev_idx-1], behaviors[prev_idx]
+                    a0, a1 = mouse.behaviors[prev_idx-1], mouse.behaviors[prev_idx]
                     mouse.detect_reward(s0, a0, w0)
                     s1, w1 = mouse.state_transition(s0, a0, w0)
                     mouse.td_learning(s0, a0, w0, s1, a1, w1)
                     if prev_idx > 2:
                         Q = mouse.compute_Qval(uc, f=update_rule.f, rectifier=update_rule.rectifier)
-#                         self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]],
-#                                                    Q,f=plasticity.f, g=plasticity.g)
+                        if Q > 0:
+                            self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]], Q, lamb=1, f=plasticity.f, g=plasticity.g)
+                            self.W[self.size:self.size*2,:] = self.c_IE.W
+#                             self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]], 0.3, lamb=1, f=plasticity.f, g=plasticity.g)
+#                             self.W[self.size:self.size*2,:] = self.c_IE.W
                         print(mouse.get_action(uc[0][1]) + "-->" + mouse.actions[uc[1][1]], uc[1][0], str(uc[1][2]), Q)
                     uc = [(s0, a0, w0), (s1, a1, w1)]
                     

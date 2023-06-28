@@ -64,7 +64,7 @@ class Connectivity(object):
         return data, row, col 
 
     @staticmethod
-    def _store_attractors(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):
+    def _store_attractors(ij, inputs_pre, inputs_post, f, g, vary_A, A, disable_pbar=False):
         """
         inputs: P x N
         Store autoassociative connectivity
@@ -75,7 +75,10 @@ class Connectivity(object):
         data = []
         for j in trange(inputs_post.shape[1], disable=disable_pbar):
             i = ij[j]
-            w = np.sum(f(inputs_post[:,i]) * g(inputs_pre[:,j][:,np.newaxis]), axis=0) 
+            if vary_A:
+                w = np.sum(f(inputs_post[:,i]) * g(inputs_pre[:,j][:,np.newaxis]) * A[:,np.newaxis], axis=0) 
+            else:
+                w = np.sum(f(inputs_post[:,i]) * g(inputs_pre[:,j][:,np.newaxis]), axis=0) 
             row.extend(i)
             col.extend([j]*len(i))
             data.extend(w)
@@ -133,7 +136,7 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
     
-    def update_sequences(self, inputs_pre, inputs_post, Q, lamb=0.7, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+    def update_sequences(self, inputs_pre, inputs_post, Q, lamb=0.8, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         N = inputs_post.shape[0]
 #         logger.info("Updating network")
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
@@ -141,9 +144,9 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W = lamb * self.W + Q * W.tocsr()
 
-    def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+    def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")
-        data, row, col = Connectivity._store_attractors(self.ij, inputs_pre, inputs_post, f, g, self.disable_pbar)
+        data, row, col = Connectivity._store_attractors(self.ij, inputs_pre, inputs_post, f, g, vary_A, A, self.disable_pbar)
         data = h(data)
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
