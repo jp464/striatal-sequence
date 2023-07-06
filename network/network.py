@@ -111,31 +111,52 @@ class RateNetwork(Network):
         prev_action2 = determine_action(state2[:,0], patterns_bg, thres=0.25)
         prev_idx2 = 0
         mouse.behaviors2[prev_idx2] = prev_action2
-
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
             state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
             state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
+            
+            # Update eligibility trace
+            post = determine_action(state2[:,i+1], patterns_bg, thres=0.25)
+            pre = determine_action(state1[:,i-99], patterns_ctx, thres=0.25)
+
+            if pre != -1: pre = patterns_ctx[pre]
+            else: pre = state1[:,-99]
+            if post != -1: post = patterns_bg[post]
+            else: post = state2[:,i+1]
+            self.c_IE.update_etrace(pre, post, eta=0.007, tau_e=1400, f=plasticity.f, g=plasticity.g)
 
             # Detect pattern and hyperpolarizing current 
             prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx)                
             prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg)
             
-            # Detect reward 
+            # Detect water 
             if transition1: 
                 mouse.behaviors1[prev_idx1] = prev_action1
                 print(mouse.get_action(mouse.behaviors1[prev_idx1-1]) + "-->" + mouse.get_action(mouse.behaviors1[prev_idx1]))
-                mouse.compute_reward(mouse.get_action(mouse.behaviors1[prev_idx1]), reward=5)
                 mouse.w = mouse.water(mouse.get_action(mouse.behaviors1[prev_idx1-1]),
                                       mouse.get_action(mouse.behaviors1[prev_idx1])) 
             if transition2:
                 mouse.behaviors2[prev_idx2] = prev_action2
-
-            if mouse.reward > 0:
-                print("Mouse received reward.")
-                mouse.reward = 0
+            
+            # Detect reward
+            if mouse.w > 0 and mouse.get_action(prev_action1) == 'lick' and not rewarded:
+                mouse.fullness += 1
+            
+            if mouse.get_action(prev_action1) not in ['lick', 'null']:
+                rewarded = False 
+                
+            if mouse.fullness > 75 and not rewarded:
+                print('Mouse received reward')
+                self.reward_etrace(E=self.c_IE.E, lamb=1, R=1)
+                mouse.fullness = 0
+                rewarded = True
+                post = determine_action(state2[:,i+1], patterns_bg, thres=0.25)
+                pre = determine_action(state1[:,i-99], patterns_ctx, thres=0.25)
+                print(pre, post)
+                
                 
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
@@ -356,6 +377,14 @@ class RateNetwork(Network):
             r_ext = hyperpolarizing_current(action_dur, cur_action, thres=300, cur=-10)
             if r_ext(0) != 0: hyperpolarize_dur += 1
         return prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, transition
+    
+    def reward_etrace(self, E, lamb, R):
+        self.c_IE.W = lamb * self.c_IE.W + R * E
+        self.W = scipy.sparse.bmat([
+            [self.c_EE.W, self.c_EI.W],
+            [self.c_IE.W, self.c_II.W]
+        ]).tocsr()
+        
 class PoissonNetwork(Network):
     def __init__(self, exc, inh=None,
             c_EE=Connectivity(), c_IE=Connectivity(), 

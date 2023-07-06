@@ -22,22 +22,19 @@ class Learning(object):
     def get_action(self, s):
         return self.actions[s]
     
-    def compute_Qval(self, uc, f=lambda x,y:x+y, rectifier=lambda x:x):
-        a0, a1, w0, w1 = uc[0], uc[1], uc[2], uc[3]
-        Q = f(self.Qvalues[w0, a0],
-              self.Qvalues[w1, a1])
-        return rectifier(Q)
-    
 class ReachingTask(Learning):
     def __init__(self, goal, alpha=0.2, gamma=0.9, reward=0):
         super().__init__(goal, alpha, gamma)
         self.actions = ['aim', 'reach', 'lick', 'scavenge', 'null']
         self.Qvalues = np.zeros((2, 4))
         self.w = 0
+        self.fullness = 0
     
     def water(self, a0, a1):
         if a0 == 'aim' and a1 == 'reach':
             return 1 
+        if a0 == 'reach' and a1 == 'lick':
+            return self.w
         if a0 == a1:
             return self.w
         return 0 
@@ -50,10 +47,6 @@ class ReachingTask(Learning):
             self.reward = penalty
         else:
             self.reward = 0
-        
-    def td_learning(self, a0, a1, w0, w1, f=lambda x:x):
-        Q0, Q1 = self.Qvalues[w0,a0], self.Qvalues[w1,a1]
-        self.Qvalues[w0,a0] =  f(Q0 + self.alpha * (self.reward + self.gamma * Q1 - Q0))
     
     
       
