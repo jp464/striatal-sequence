@@ -14,9 +14,10 @@ class Learning(object):
         self.in_seq = False
         self.actions = None
         self.Qvalues = None
-        self.behaviors = None
-        self.behaviors_raw = None
-        self.action_dur = 0
+        self.behaviors1 = None
+        self.behaviors2 = None
+        self.action_dur1 = 0
+        self.action_dur2 = 0
     
     def get_action(self, s):
         return self.actions[s]
@@ -37,6 +38,8 @@ class ReachingTask(Learning):
     def water(self, a0, a1):
         if a0 == 'aim' and a1 == 'reach':
             return 1 
+        if a0 == a1:
+            return self.w
         return 0 
         
     def compute_reward(self, a, reward=1, penalty=-.05):

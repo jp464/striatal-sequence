@@ -12,13 +12,17 @@ def spike_to_rate(spikes, window_std=20):
         estimate[i,:] = y
     return estimate
 
-def determine_action(state, patterns, thres=0.6):
-    correlations = [scipy.stats.pearsonr(state, p)[0] for p in patterns]
-    if np.max(correlations) > thres:
-        return np.argmax(correlations)
+def determine_action(state, patterns, thres=0.6, correlations=False):
+    if correlations:
+        measure = [scipy.stats.pearsonr(state, p)[0] for p in patterns]
+    else:
+        measure = [state.T.dot(p) / state.shape[0] for p in patterns]
+    maxind = np.argmax(measure)
+    if measure[maxind] > thres and abs(np.sort(measure)[-2]-measure[maxind]) > .05:
+        return maxind
     return -1
 
-def hyperpolarizing_current(action_dur, cur_action=-1, thres=100, cur=-10):
+def hyperpolarizing_current(action_dur, cur_action=-1, thres=200, cur=-10):
     if action_dur > thres and cur_action != -1:
         return lambda t:cur 
     else:

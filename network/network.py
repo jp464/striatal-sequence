@@ -66,7 +66,7 @@ class Network(object):
         else:
             self.tau = exc.tau
         self.xi = None
-        self.r_ext = 0
+        self.r_ext = lambda t:0
         self.etrace = np.zeros((self.size, self.size))
 
 
@@ -98,51 +98,41 @@ class RateNetwork(Network):
             fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
         ur = NetworkUpdateRule()  
         
-        # Initial conditions 
-        
+        # Initial conditions      
         state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
         state1[:,0] = r1
         state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
         state2[:,0] = r2
-        mouse.behaviors = np.empty(int((t-t0)/dt), dtype=np.int8)
-        prev_action = determine_action(state2[:,0], patterns_bg, thres=0.4)
-        prev_idx = 0
-        mouse.behaviors[prev_idx] = prev_action
-        self.r_ext = r_ext
-        hyperpolarize_dur = 0
+        mouse.behaviors1 = np.empty(int((t-t0)/dt), dtype=np.int8)
+        mouse.behaviors2 = np.empty(int((t-t0)/dt), dtype=np.int8)
+        prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=0.25)
+        prev_idx1 = 0
+        mouse.behaviors1[prev_idx1] = prev_action1
+        prev_action2 = determine_action(state2[:,0], patterns_bg, thres=0.25)
+        prev_idx2 = 0
+        mouse.behaviors2[prev_idx2] = prev_action2
+
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
             state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
             state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
+
+            # Detect pattern and hyperpolarizing current 
+            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx)                
+            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg)
             
-            # Detect pattern
-            cur_action = determine_action(state2[:,i+1], patterns_bg, thres=0.4)
-            mouse.action_dur += 1          
-
-#             print(cur_action, mouse.action_dur, self.r_ext(1))
-
-            if prev_action != cur_action:
-                mouse.action_dur = 0
-                prev_action = cur_action
-                if cur_action != -1:
-                    prev_idx += 1
-                    mouse.behaviors[prev_idx] = cur_action
-                    print(mouse.get_action(mouse.behaviors[prev_idx-1]) + "-->" + mouse.get_action(mouse.behaviors[prev_idx]))
-
-                mouse.compute_reward(mouse.get_action(mouse.behaviors[prev_idx]), reward=5)
-                mouse.w = mouse.water(mouse.get_action(mouse.behaviors[prev_idx-1]),
-                                      mouse.get_action(mouse.behaviors[prev_idx])) 
-                
-            if hyperpolarize_dur > 0 and hyperpolarize_dur < 100:
-                hyperpolarize_dur += 1
-            else:
-                hyperpolarize_dur = 0
-                self.r_ext = hyperpolarizing_current(mouse.action_dur, cur_action, thres=100, cur=-10)
-                if self.r_ext(0) != 0: hyperpolarize_dur += 1
-               
             # Detect reward 
+            if transition1: 
+                mouse.behaviors1[prev_idx1] = prev_action1
+                print(mouse.get_action(mouse.behaviors1[prev_idx1-1]) + "-->" + mouse.get_action(mouse.behaviors1[prev_idx1]))
+                mouse.compute_reward(mouse.get_action(mouse.behaviors1[prev_idx1]), reward=5)
+                mouse.w = mouse.water(mouse.get_action(mouse.behaviors1[prev_idx1-1]),
+                                      mouse.get_action(mouse.behaviors1[prev_idx1])) 
+            if transition2:
+                mouse.behaviors2[prev_idx2] = prev_action2
+
             if mouse.reward > 0:
                 print("Mouse received reward.")
                 mouse.reward = 0
@@ -169,7 +159,8 @@ class RateNetwork(Network):
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
             state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.25
+
 
             
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
@@ -317,9 +308,8 @@ class RateNetwork(Network):
                 raise NotImplemented
             else:
                 phi_r = self.exc.phi
-            r_ext = self.r_ext
-            r_sum1 = phi_r(self.W[0:self.size,:].dot(r1) + net2.W[0:self.size,:].dot(r2) + r_ext(t)) 
-            r_sum2 = phi_r(self.W[self.size:self.size*2,:].dot(r1) + net2.W[self.size:self.size*2,:].dot(r2) + r_ext(t)) 
+            r_sum1 = phi_r(self.W[0:self.size,:].dot(r1) + net2.W[0:self.size,:].dot(r2) + self.r_ext(t)) 
+            r_sum2 = phi_r(self.W[self.size:self.size*2,:].dot(r1) + net2.W[self.size:self.size*2,:].dot(r2) + net2.r_ext(t)) 
 
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau
@@ -335,11 +325,11 @@ class RateNetwork(Network):
         """
         Compute the overlap of network activity with a given input vector
         """
-        ret = np.zeros(pop.state.shape[1])
-        for i, row in enumerate(pop.state.T):
-            ret[i] = np.sum((row - vec)**2) / (self.exc.size-1)
-        return ret    
-#         return pop.state.T.dot(vec) / self.exc.size
+#         ret = np.zeros(pop.state.shape[1])
+#         for i, row in enumerate(pop.state.T):
+#             ret[i] = np.sum((row - vec)**2) / (self.exc.size-1)
+#         return ret    
+        return pop.state.T.dot(vec) / self.exc.size
 
     def clear_state(self):
         self.exc.state = np.array([], ndmin=2).reshape(self.exc.size,0)
@@ -348,7 +338,24 @@ class RateNetwork(Network):
             self.inh.state = np.array([], ndmin=2).reshape(self.inh.size,0)
             self.inh.field = np.array([], ndmin=2).reshape(self.inh.size,0)
 
-
+    def lc(self, prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, state, patterns):
+        cur_action = determine_action(state, patterns, thres=0.25)
+        transition = False 
+        action_dur += 1
+        if prev_action != cur_action:
+            action_dur = 0
+            prev_action = cur_action 
+            if cur_action != -1:
+                prev_idx += 1 
+                transition = True
+                
+        if hyperpolarize_dur > 0 and hyperpolarize_dur < 100:
+            hyperpolarize_dur += 1
+        else:
+            hyperpolarize_dur = 0
+            r_ext = hyperpolarizing_current(action_dur, cur_action, thres=300, cur=-10)
+            if r_ext(0) != 0: hyperpolarize_dur += 1
+        return prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, transition
 class PoissonNetwork(Network):
     def __init__(self, exc, inh=None,
             c_EE=Connectivity(), c_IE=Connectivity(), 
