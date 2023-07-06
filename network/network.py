@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
 from connectivity import Connectivity
-from helpers import spike_to_rate, determine_action
+from helpers import spike_to_rate, determine_action, hyperpolarizing_current
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
 from transfer_functions import erf
@@ -22,6 +22,7 @@ class Population(object):
         self.field = np.array([], ndmin=2).reshape(N,0)
         self.tau = tau
         self.phi = phi
+        
 
 
 class SpikingNeurons(Population):
@@ -66,6 +67,7 @@ class Network(object):
             self.tau = exc.tau
         self.xi = None
         self.r_ext = 0
+        self.etrace = np.zeros((self.size, self.size))
 
 
 class RateNetwork(Network):
@@ -77,6 +79,7 @@ class RateNetwork(Network):
         super(RateNetwork, self).__init__(exc, inh, c_EE, c_IE, c_EI, c_II)
         self.formulation = formulation
         self.disable_pbar = disable_pbar
+        self.hyperpolarize_dur = 0 
         if self.formulation == 1:
             self._fun = self._fun1
         elif self.formulation == 2:
@@ -86,73 +89,68 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
-        
-        update_rule = NetworkUpdateRule()
-    
+    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, lamb=0.9, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
             fun = self._fun(net2, pbar,t)
         else:
             fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
-            
-        self.r_ext = r_ext
+        ur = NetworkUpdateRule()  
+        
+        # Initial conditions 
+        
         state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
         state1[:,0] = r1
         state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
         state2[:,0] = r2
-        mouse.behaviors = np.zeros(int((t-t0)/dt), dtype=np.int8)
-        
-        mouse.behaviors[0] = determine_action(state1[:,0], patterns_ctx)
-        prev_idx = 0 
-
-#         self.c_IE.update_sequences(patterns_ctx[1], patterns_bg[2],
-#                            3.5, lamb=1,f=plasticity.f, g=plasticity.g)
-#         self.W[self.size:self.size*2,:] = self.c_IE.W
-#         self.c_IE.update_sequences(patterns_ctx[2], patterns_bg[3],
-#                            3.5, lamb=1,f=plasticity.f, g=plasticity.g)
-#         self.W[self.size:self.size*2,:] = self.c_IE.W
-#         self.c_IE.update_sequences(patterns_ctx[3], patterns_bg[1],
-#                            3.5, lamb=1,f=plasticity.f, g=plasticity.g)
-#         self.W[self.size:self.size*2,:] = self.c_IE.W
-
-        
+        mouse.behaviors = np.empty(int((t-t0)/dt), dtype=np.int8)
+        prev_action = determine_action(state2[:,0], patterns_bg, thres=0.4)
+        prev_idx = 0
+        mouse.behaviors[prev_idx] = prev_action
+        self.r_ext = r_ext
+        hyperpolarize_dur = 0
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            cur1, cur2 = state1[:,i], state2[:,i]
-            dr1, dr2 = fun(i, cur1, cur2, noise)
-            state1[:,i+1] = state1[:,i] + dt * dr1 
-            state2[:,i+1] = state2[:,i] + dt * dr2  
+            # Update firing rate 
+            noise = np.random.normal(size=self.size)
+            dr1, dr2 = fun(i, state1[:,i], state2[:,i])
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
             
-            cur_action = determine_action(state1[:,i], patterns_ctx)
-            if mouse.behaviors[prev_idx] != cur_action and cur_action != -1:
-                if cur_action == 2 and mouse.behaviors[prev_idx] != 1:
-                    continue
-                prev_idx += 1
-                mouse.behaviors[prev_idx] = cur_action
+            # Detect pattern
+            cur_action = determine_action(state2[:,i+1], patterns_bg, thres=0.4)
+            mouse.action_dur += 1          
 
-                if prev_idx == 1:
-                    s1, w1 = 'out', 0
-                else:
-                    s0, w0 = s1, w1
-                    a0, a1 = mouse.behaviors[prev_idx-1], mouse.behaviors[prev_idx]
-                    mouse.detect_reward(s0, a0, w0)
-                    s1, w1 = mouse.state_transition(s0, a0, w0)
-                    mouse.td_learning(s0, a0, w0, s1, a1, w1)
-                    if prev_idx > 2:
-                        Q = mouse.compute_Qval(uc, f=update_rule.f, rectifier=update_rule.rectifier)
-                        if Q > 0:
-                            self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]], Q, lamb=1, f=plasticity.f, g=plasticity.g)
-                            self.W[self.size:self.size*2,:] = self.c_IE.W
-#                             self.c_IE.update_sequences(patterns_ctx[uc[0][1]], patterns_bg[uc[1][1]], 0.3, lamb=1, f=plasticity.f, g=plasticity.g)
-#                             self.W[self.size:self.size*2,:] = self.c_IE.W
-                        print(mouse.get_action(uc[0][1]) + "-->" + mouse.actions[uc[1][1]], uc[1][0], str(uc[1][2]), Q)
-                    uc = [(s0, a0, w0), (s1, a1, w1)]
-                    
+#             print(cur_action, mouse.action_dur, self.r_ext(1))
+
+            if prev_action != cur_action:
+                mouse.action_dur = 0
+                prev_action = cur_action
+                if cur_action != -1:
+                    prev_idx += 1
+                    mouse.behaviors[prev_idx] = cur_action
+                    print(mouse.get_action(mouse.behaviors[prev_idx-1]) + "-->" + mouse.get_action(mouse.behaviors[prev_idx]))
+
+                mouse.compute_reward(mouse.get_action(mouse.behaviors[prev_idx]), reward=5)
+                mouse.w = mouse.water(mouse.get_action(mouse.behaviors[prev_idx-1]),
+                                      mouse.get_action(mouse.behaviors[prev_idx])) 
+                
+            if hyperpolarize_dur > 0 and hyperpolarize_dur < 100:
+                hyperpolarize_dur += 1
+            else:
+                hyperpolarize_dur = 0
+                self.r_ext = hyperpolarizing_current(mouse.action_dur, cur_action, thres=100, cur=-10)
+                if self.r_ext(0) != 0: hyperpolarize_dur += 1
+               
+            # Detect reward 
+            if mouse.reward > 0:
+                print("Mouse received reward.")
+                mouse.reward = 0
+                
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
-        
-    def simulate_euler2(self, net2, t, r1, r2, noise=0, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    
+    def simulate_euler2(self, net2, t, r1, r2, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -168,10 +166,11 @@ class RateNetwork(Network):
         state2[:,0] = r2
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            cur1, cur2 = state1[:,i], state2[:,i]
-            dr1, dr2 = fun(i, cur1, cur2, noise)
-            state1[:,i+1] = state1[:,i] + dt * dr1 
-            state2[:,i+1] = state2[:,i] + dt * dr2
+            noise = np.random.normal(size=self.size)
+            dr1, dr2 = fun(i, state1[:,i], state2[:,i])
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
+
             
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]])
@@ -307,7 +306,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, net2, pbar, t_max):
-        def f(t, r1, r2, noise, return_field=False):
+        def f(t, r1, r2, return_field=False):
             """
             Rate formulation 1
             """
@@ -319,8 +318,9 @@ class RateNetwork(Network):
             else:
                 phi_r = self.exc.phi
             r_ext = self.r_ext
-            r_sum1 = phi_r(self.W[0:self.size,:].dot(r1) + net2.W[0:self.size,:].dot(r2) + r_ext(t))
-            r_sum2 = phi_r(self.W[self.size:self.size*2,:].dot(r1) + net2.W[self.size:self.size*2,:].dot(r2) + r_ext(t)) + np.random.RandomState().normal(0,1,size=r1.shape) * noise
+            r_sum1 = phi_r(self.W[0:self.size,:].dot(r1) + net2.W[0:self.size,:].dot(r2) + r_ext(t)) 
+            r_sum2 = phi_r(self.W[self.size:self.size*2,:].dot(r1) + net2.W[self.size:self.size*2,:].dot(r2) + r_ext(t)) 
+
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau
 

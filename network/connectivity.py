@@ -100,6 +100,7 @@ class Connectivity(object):
 class SparseConnectivity(Connectivity):
     def __init__(self, source, target, p=0.005, fixed_degree=False, seed=42, disable_pbar=False):
         self.W = scipy.sparse.csr_matrix((target.size, source.size), dtype=np.float32)
+        self.E = scipy.sparse.csr_matrix((target.size, source.size), dtype=np.float32)
         self.p = p
         self.K = p*target.size
         self.ij = []
@@ -143,7 +144,15 @@ class SparseConnectivity(Connectivity):
         data = np.asarray(data) / self.K
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W = lamb * self.W + Q * W.tocsr()
-
+        
+    def update_etrace(self, inputs_pre, inputs_post, Q, eta=1, tau_e=0.2, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+        N = inputs_post.shape[0]
+#         logger.info("Updating network")
+        data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
+        data = np.asarray(data) / self.K
+        E = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
+        self.E = eta * E.tocsr() + tau_e * self.E
+        
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")
         data, row, col = Connectivity._store_attractors(self.ij, inputs_pre, inputs_post, f, g, vary_A, A, self.disable_pbar)
