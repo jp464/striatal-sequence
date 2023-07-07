@@ -18,6 +18,8 @@ class Learning(object):
         self.behaviors2 = None
         self.action_dur1 = 0
         self.action_dur2 = 0
+        self.transitions1 = np.array([])
+        self.transitions2 = np.array([])
     
     def get_action(self, s):
         return self.actions[s]
@@ -47,6 +49,30 @@ class ReachingTask(Learning):
             self.reward = penalty
         else:
             self.reward = 0
+            
+    def calibrate(self):
+        transitions1 = [self.transitions1[i] for i in range(len(self.transitions1)) 
+               if self.transitions1[i] - self.transitions1[i-1] > 10]
+        transitions2 = [self.transitions2[i] for i in range(len(self.transitions2)) 
+               if self.transitions2[i] - self.transitions2[i-1] > 10]
+        transitions1 = transitions1[2:]
+        transitions2 = transitions2[:-2]
+        delta_t = np.mean(np.subtract(transitions1, transitions2))
+        
+        eta = 0
+        tau_e = 0
+        for i in range(len(transitions1)):
+            if i % 2 == 1:
+                eta += (transitions1[i] - transitions1[i-1]) + (transitions2[i] - transitions2[i-1])
+            if i % 8 == 7:
+                tau_e += (transitions1[i] - transitions1[i-7]) + (transitions2[i] - transitions2[i-7])
+        eta = len(transitions1) / eta
+        tau_e = tau_e / (len(transitions1) / 7)
+        
+        print("tau_e: " + str(tau_e) + " eta: " + str(eta) + " delta_t: " + str(delta_t))
+        return tau_e, eta, delta_t
+                
+        
     
     
       

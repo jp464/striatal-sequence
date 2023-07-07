@@ -89,7 +89,7 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, lamb=0.9, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, lamb=0.9, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.2):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
@@ -105,10 +105,10 @@ class RateNetwork(Network):
         state2[:,0] = r2
         mouse.behaviors1 = np.empty(int((t-t0)/dt), dtype=np.int8)
         mouse.behaviors2 = np.empty(int((t-t0)/dt), dtype=np.int8)
-        prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=0.25)
+        prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=detection_thres)
         prev_idx1 = 0
         mouse.behaviors1[prev_idx1] = prev_action1
-        prev_action2 = determine_action(state2[:,0], patterns_bg, thres=0.25)
+        prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
         prev_idx2 = 0
         mouse.behaviors2[prev_idx2] = prev_action2
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
@@ -118,19 +118,27 @@ class RateNetwork(Network):
             state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
             state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
             
-            # Update eligibility trace
-            post = determine_action(state2[:,i+1], patterns_bg, thres=0.25)
-            pre = determine_action(state1[:,i-99], patterns_ctx, thres=0.25)
-            print(post, pre)
-            if pre != -1: pre = patterns_ctx[pre]
-            else: pre = state1[:,-99]
-            if post != -1: post = patterns_bg[post]
-            else: post = state2[:,i+1]
-            self.c_IE.update_etrace(pre, post, eta=0.007, tau_e=1400, f=plasticity.f, g=plasticity.g)
+            cal_ctx1, cal_ctx2 = determine_action(state1[:,i+1], patterns_ctx, thres=detection_thres), determine_action(state1[:,i], patterns_ctx, thres=detection_thres)
+            if cal_ctx1 != cal_ctx2:
+                mouse.transitions1 = np.append(mouse.transitions1, i)
+            cal_bg1, cal_bg2 = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres), determine_action(state2[:,i], patterns_bg, thres=detection_thres)
+            if cal_bg1 != cal_bg2:
+                mouse.transitions2 = np.append(mouse.transitions2, i)            
+            
+            
+#             # Update eligibility trace
+#             if i - 447 > 0:
+#                 post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
+#                 pre = determine_action(state1[:,i-447], patterns_ctx, thres=detection_thres)
+#                 if pre != -1: pre = patterns_ctx[pre]
+#                 else: pre = state1[:,-447]
+#                 if post != -1: post = patterns_bg[post]
+#                 else: post = state2[:,i+1]
+#                 self.c_IE.update_etrace(pre, post, eta=0.0077, tau_e=1386, f=plasticity.f, g=plasticity.g)
 
             # Detect pattern and hyperpolarizing current 
-            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx)                
-            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg)
+            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres)                
+            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres)
             
             # Detect water 
             if transition1: 
@@ -153,9 +161,6 @@ class RateNetwork(Network):
                 self.reward_etrace(E=self.c_IE.E, lamb=1, R=1)
                 mouse.fullness = 0
                 rewarded = True
-                post = determine_action(state2[:,i+1], patterns_bg, thres=0.25)
-                pre = determine_action(state1[:,i-99], patterns_ctx, thres=0.25)
-                print(pre, post)
                 
                 
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
@@ -359,8 +364,8 @@ class RateNetwork(Network):
             self.inh.state = np.array([], ndmin=2).reshape(self.inh.size,0)
             self.inh.field = np.array([], ndmin=2).reshape(self.inh.size,0)
 
-    def lc(self, prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, state, patterns):
-        cur_action = determine_action(state, patterns, thres=0.25)
+    def lc(self, prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, state, patterns, thres):
+        cur_action = determine_action(state, patterns, thres)
         transition = False 
         action_dur += 1
         if prev_action != cur_action:

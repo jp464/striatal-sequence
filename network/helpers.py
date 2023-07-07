@@ -18,7 +18,7 @@ def determine_action(state, patterns, thres=0.6, correlations=False):
     else:
         measure = [state.T.dot(p) / state.shape[0] for p in patterns]
     maxind = np.argmax(measure)
-    if measure[maxind] > thres and abs(np.sort(measure)[-2]-measure[maxind]) > .05:
+    if measure[maxind] > thres and abs(np.sort(measure)[-2]-measure[maxind]) > .01:
         return maxind
     return -1
 
