@@ -121,7 +121,7 @@ class RateNetwork(Network):
             # Update eligibility trace
             post = determine_action(state2[:,i+1], patterns_bg, thres=0.25)
             pre = determine_action(state1[:,i-99], patterns_ctx, thres=0.25)
-
+            print(post, pre)
             if pre != -1: pre = patterns_ctx[pre]
             else: pre = state1[:,-99]
             if post != -1: post = patterns_bg[post]
