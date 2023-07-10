@@ -111,11 +111,20 @@ class RateNetwork(Network):
         prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
         prev_idx2 = 0
         mouse.behaviors2[prev_idx2] = prev_action2
+        # TEMP
+        patterns = [(0,2), (2,0), (0,1), (1,2)]
+        for p in patterns:      
+            for i in range(140):
+                self.c_IE.update_etrace(patterns_ctx[p[0]], patterns_bg[p[1]], 
+                                        eta=0.004, tau_e=300, f=plasticity.f, g=plasticity.g)
+        self.reward_etrace(E=self.c_IE.E, lamb=.6, R=1)
+        self.reward_etrace(E=self.c_IE.E, lamb=.6, R=1)
+        # TEMP
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * .1
             state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
             
             cal_ctx1, cal_ctx2 = determine_action(state1[:,i+1], patterns_ctx, thres=detection_thres), determine_action(state1[:,i], patterns_ctx, thres=detection_thres)
@@ -158,7 +167,7 @@ class RateNetwork(Network):
                 
             if mouse.fullness > 75 and not rewarded:
                 print('Mouse received reward')
-                self.reward_etrace(E=self.c_IE.E, lamb=1, R=1)
+                self.reward_etrace(E=self.c_IE.E, lamb=0.6, R=1)
                 mouse.fullness = 0
                 rewarded = True
                 
@@ -379,12 +388,12 @@ class RateNetwork(Network):
             hyperpolarize_dur += 1
         else:
             hyperpolarize_dur = 0
-            r_ext = hyperpolarizing_current(action_dur, cur_action, thres=300, cur=-10)
+            r_ext = hyperpolarizing_current(action_dur, cur_action, thres=500, cur=-10)
             if r_ext(0) != 0: hyperpolarize_dur += 1
         return prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, transition
     
     def reward_etrace(self, E, lamb, R):
-        self.c_IE.W = lamb * self.c_IE.W + R * E
+        self.c_IE.W = lamb * self.c_IE.W + R * E.tocsr()
         self.W = scipy.sparse.bmat([
             [self.c_EE.W, self.c_EI.W],
             [self.c_IE.W, self.c_II.W]

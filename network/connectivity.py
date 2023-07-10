@@ -150,6 +150,7 @@ class SparseConnectivity(Connectivity):
 #         logger.info("Updating network")
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
         data = np.asarray(data) / self.K
+         
         dE = -(self.E / tau_e) + (scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32).tocsr() * eta)
         self.E += dE 
         
