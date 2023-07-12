@@ -111,25 +111,25 @@ class RateNetwork(Network):
         prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
         prev_idx2 = 0
         mouse.behaviors2[prev_idx2] = prev_action2
-        # TEMP
-        patterns = [(0,2, 445), (2,0,445), (2,-1,126), (2,1,5), (-1,1,7), (0,1,494), 
-                    (0,-1,127), (0,2,25), (-1,2,5), (1,2,471)]
-        for p in patterns: 
-            if p[0] == -1:
-                pre = np.random.normal(size=self.size)
-            else:
-                pre = patterns_ctx[p[0]]
-            if p[1] == -1:
-                post = np.random.normal(size=self.size)
-            else:
-                post = patterns_bg[p[1]]
-            for i in range(p[2]):
-                self.c_IE.update_etrace(pre, post, 
-                                        eta=0.001, tau_e=1600, f=plasticity.f, g=plasticity.g)
-        self.reward_etrace(E=self.c_IE.E, lamb=.2, R=1)
+#         # TEMP
+#         patterns = [(0,2, 445), (2,0,445), (2,-1,126), (2,1,5), (-1,1,7), (0,1,494), 
+#                     (0,-1,127), (0,2,25), (-1,2,5), (1,2,471)]
+#         for p in patterns: 
+#             if p[0] == -1:
+#                 pre = np.random.normal(size=self.size)
+#             else:
+#                 pre = patterns_ctx[p[0]]
+#             if p[1] == -1:
+#                 post = np.random.normal(size=self.size)
+#             else:
+#                 post = patterns_bg[p[1]]
+#             for i in range(p[2]):
+#                 self.c_IE.update_etrace(pre, post, 
+#                                         eta=0.001, tau_e=1600, f=plasticity.f, g=plasticity.g)
+#         self.reward_etrace(E=self.c_IE.E, lamb=.2, R=1)
 #         self.reward_etrace(E=self.c_IE.E, lamb=.2, R=1)
         
-        print('initialization complete')
+#         print('initialization complete')
         # TEMP
         reward = False
         eprev = None
@@ -159,7 +159,7 @@ class RateNetwork(Network):
                 if mouse.w > 0 and post == 2 and pre == 1:
                     drink = True
                     mouse.w += 1
-                if drink and mouse.w > 50 and (post != 2 or pre != 1):
+                if drink and mouse.w > 200 and (post != 2 or pre != 1):
                     mouse.w = 0
                     reward = True
                     drink = False
@@ -179,7 +179,7 @@ class RateNetwork(Network):
 
             # Detect pattern and hyperpolarizing current 
             prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=10000000, hdur=100)                
-            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=100)
+            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=120)
             
             # Detect water 
             if transition1: 
