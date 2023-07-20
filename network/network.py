@@ -111,26 +111,6 @@ class RateNetwork(Network):
         prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
         prev_idx2 = 0
         mouse.behaviors2[prev_idx2] = prev_action2
-#         # TEMP
-#         patterns = [(0,2, 445), (2,0,445), (2,-1,126), (2,1,5), (-1,1,7), (0,1,494), 
-#                     (0,-1,127), (0,2,25), (-1,2,5), (1,2,471)]
-#         for p in patterns: 
-#             if p[0] == -1:
-#                 pre = np.random.normal(size=self.size)
-#             else:
-#                 pre = patterns_ctx[p[0]]
-#             if p[1] == -1:
-#                 post = np.random.normal(size=self.size)
-#             else:
-#                 post = patterns_bg[p[1]]
-#             for i in range(p[2]):
-#                 self.c_IE.update_etrace(pre, post, 
-#                                         eta=0.001, tau_e=1600, f=plasticity.f, g=plasticity.g)
-#         self.reward_etrace(E=self.c_IE.E, lamb=.2, R=1)
-#         self.reward_etrace(E=self.c_IE.E, lamb=.2, R=1)
-        
-#         print('initialization complete')
-        # TEMP
         reward = False
         eprev = None
         ecnt = 0
@@ -175,11 +155,11 @@ class RateNetwork(Network):
                 if post != -1: post = patterns_bg[post]
                 else: post = state2[:,i+1]
                 
-                self.c_IE.update_etrace(pre, post, eta=0.001, tau_e=1600, f=plasticity.f, g=plasticity.g)
+#                 self.c_IE.update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=0.0005, tau_e=1600, f=plasticity.f, g=plasticity.g)
 
             # Detect pattern and hyperpolarizing current 
-            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=10000000, hdur=100)                
-            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=120)
+            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=10000000, hdur=100)   
+            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=100, hdur=30)
             
             # Detect water 
             if transition1: 
@@ -193,7 +173,7 @@ class RateNetwork(Network):
             # Detect reward
             if reward:
                 print('Mouse received reward')
-                self.reward_etrace(E=self.c_IE.E, lamb=0.1, R=1)
+                self.reward_etrace(E=self.c_IE.E, lamb=0.5, R=1)
                 reward = False
 #             if mouse.w > 0 and mouse.get_action(prev_action2) in ['aim', 'reach', 'none'] and mouse.get_action(mouse.behaviors2[prev_idx2-1]) == 'lick':
 #                 print('Mouse received reward')
