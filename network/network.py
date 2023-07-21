@@ -155,11 +155,11 @@ class RateNetwork(Network):
                 if post != -1: post = patterns_bg[post]
                 else: post = state2[:,i+1]
                 
-#                 self.c_IE.update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=0.0005, tau_e=1600, f=plasticity.f, g=plasticity.g)
+                self.c_IE.update_etrace(pre, post, eta=0.0005, tau_e=1600, f=plasticity.f, g=plasticity.g)
 
             # Detect pattern and hyperpolarizing current 
             prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=10000000, hdur=100)   
-            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=100, hdur=30)
+            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=100)
             
             # Detect water 
             if transition1: 
