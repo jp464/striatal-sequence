@@ -111,10 +111,9 @@ class RateNetwork(Network):
         prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
         prev_idx2 = 0
         mouse.behaviors2[prev_idx2] = prev_action2
-        reward = False
         eprev = None
         ecnt = 0
-        drink = False
+        
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
@@ -136,14 +135,6 @@ class RateNetwork(Network):
                 pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
                 post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
                 
-                if mouse.w > 0 and post == 2 and pre == 1:
-                    drink = True
-                    mouse.w += 1
-                if drink and mouse.w > 200 and (post != 2 or pre != 1):
-                    mouse.w = 0
-                    reward = True
-                    drink = False
-                
                 if eprev == [pre, post]:
                     ecnt += 1
                 else:
@@ -158,28 +149,25 @@ class RateNetwork(Network):
                 self.c_IE.update_etrace(pre, post, eta=0.0005, tau_e=1600, f=plasticity.f, g=plasticity.g)
 
             # Detect pattern and hyperpolarizing current 
-            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=10000000, hdur=100)   
+            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
             prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=100)
             
             # Detect water 
             if transition1: 
                 mouse.behaviors1[prev_idx1] = prev_action1
                 print(mouse.get_action(mouse.behaviors1[prev_idx1-1]) + "-->" + mouse.get_action(mouse.behaviors1[prev_idx1]))
-                mouse.w = mouse.water(mouse.get_action(mouse.behaviors1[prev_idx1-1]),
-                                      mouse.get_action(mouse.behaviors1[prev_idx1])) 
+                mouse.water(mouse.get_action(mouse.behaviors1[prev_idx1-1]),
+                            mouse.get_action(mouse.behaviors1[prev_idx1])) 
             if transition2:
                 mouse.behaviors2[prev_idx2] = prev_action2
             
             # Detect reward
-            if reward:
+            mouse.compute_reward(mouse.get_action(mouse.behaviors1[prev_idx1]))
+            if mouse.reward:
                 print('Mouse received reward')
                 self.reward_etrace(E=self.c_IE.E, lamb=0.5, R=1)
                 reward = False
-#             if mouse.w > 0 and mouse.get_action(prev_action2) in ['aim', 'reach', 'none'] and mouse.get_action(mouse.behaviors2[prev_idx2-1]) == 'lick':
-#                 print('Mouse received reward')
-#                 self.reward_etrace(E=self.c_IE.E, lamb=0.4, R=1)
-#                 mouse.w = 0 
-                
+
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
     

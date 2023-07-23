@@ -30,23 +30,29 @@ class ReachingTask(Learning):
         self.actions = ['aim', 'reach', 'lick', 'scavenge', 'null']
         self.Qvalues = np.zeros((2, 4))
         self.w = 0
+        self.water_left = -1
         self.fullness = 0
     
     def water(self, a0, a1):
         if a0 == 'aim' and a1 == 'reach':
-            return 1 
-        if a0 == 'reach' and a1 == 'lick':
-            return self.w
-        if a0 == a1:
-            return self.w
-        return 0 
-        
-    def compute_reward(self, a, reward=1, penalty=-.05):
-        if a == 'lick' and self.w:
-            self.reward = reward
+            self.water_left = 200
+            self.w = 1
+        elif a0 == 'reach' and a1 == 'lick':
+            return 
+        elif a0 == a1:
+            return
+        else:
             self.w = 0
-        elif a == 'lick':
-            self.reward = penalty
+        
+    def compute_reward(self, a, reward=1):
+        if self.water_left == -1:
+            self.reward = 0
+        elif self.water_left == 0:
+            self.w = 0
+            self.reward = reward
+            self.water_left -= 1
+        elif a == 'lick' and self.w:
+            self.water_left -= 1
         else:
             self.reward = 0
             
