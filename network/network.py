@@ -171,7 +171,7 @@ class RateNetwork(Network):
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
     
-    def simulate_euler2(self, net2, t, r1, r2, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_euler2(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, detection_thres, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -180,20 +180,29 @@ class RateNetwork(Network):
         else:
             fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
             
+        # Initial conditions                
         self.r_ext = r_ext
         state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
         state1[:,0] = r1
         state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
         state2[:,0] = r2
+        prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=detection_thres)
+        prev_idx1 = 0
+        prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
+        prev_idx2 = 0
+
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.25
-
-
             
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0.25
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.25
+            
+            # Add hyperpolarizing current
+            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
+            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=100)
+
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]])
 
