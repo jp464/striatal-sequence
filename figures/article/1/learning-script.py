@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 logging.basicConfig(level=logging.INFO)
 
+### Input 
+filename = sys.argv[1]
+
 ### Set up network
 phi = ErrorFunction(mu=0.22, sigma=0.1).phi
 ctx = Population(N=1000, tau=1e-2, phi=phi, name='ctx')
@@ -61,7 +64,6 @@ overlaps_ctx = sequences_ctx[0].overlaps(net_ctx, ctx)
 overlaps_bg = sequences_bg[0].overlaps(net_bg, bg)
 correlations_ctx = sequences_ctx[0].overlaps(net_ctx, ctx, correlation=True)
 correlations_bg = sequences_bg[0].overlaps(net_bg, bg, correlation=True)
-filename = 'learning-0005-1600-600-5-1000-v0'
 np.savez('./data/' + filename + '.npz', 
          overlaps_ctx=overlaps_ctx, overlaps_bg=overlaps_bg, 
          correlations_ctx=correlations_ctx, correlations_bg=correlations_bg, 
