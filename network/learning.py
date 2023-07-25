@@ -6,14 +6,8 @@ from transfer_functions import erf
 logger = logging.getLogger(__name__)
 
 class Learning(object):
-    def __init__(self, goal, alpha, gamma):
-        self.goal = goal
-        self.alpha = alpha
-        self.gamma = gamma 
-        self.reward = 0
-        self.in_seq = False
+    def __init__(self):
         self.actions = None
-        self.Qvalues = None
         self.behaviors1 = None
         self.behaviors2 = None
         self.action_dur1 = 0
@@ -25,17 +19,17 @@ class Learning(object):
         return self.actions[s]
     
 class ReachingTask(Learning):
-    def __init__(self, goal, alpha=0.2, gamma=0.9, reward=0):
-        super().__init__(goal, alpha, gamma)
+    def __init__(self):
+        super().__init__()
         self.actions = ['aim', 'reach', 'lick', 'scavenge', 'null']
-        self.Qvalues = np.zeros((2, 4))
         self.w = 0
         self.water_left = -1
         self.fullness = 0
     
-    def water(self, a0, a1):
+    # Detect whether mouse has acquired water
+    def water(self, a0, a1, water_left=300):
         if a0 == 'aim' and a1 == 'reach':
-            self.water_left = 200
+            self.water_left = water_left
             self.w = 1
         elif a0 == 'reach' and a1 == 'lick':
             return 
@@ -43,7 +37,8 @@ class ReachingTask(Learning):
             return
         else:
             self.w = 0
-        
+    
+    # Detect whether mouse received reward
     def compute_reward(self, a, reward=1):
         if self.water_left == -1:
             self.reward = 0
@@ -55,31 +50,29 @@ class ReachingTask(Learning):
             self.water_left -= 1
         else:
             self.reward = 0
-            
-    def calibrate(self):
-        transitions1 = [self.transitions1[i] for i in range(len(self.transitions1)) 
-               if self.transitions1[i] - self.transitions1[i-1] > 10]
-        transitions2 = [self.transitions2[i] for i in range(len(self.transitions2)) 
-               if self.transitions2[i] - self.transitions2[i-1] > 10]
-        transitions1 = transitions1[2:]
-        transitions2 = transitions2[:-2]
-        delta_t = np.mean(np.subtract(transitions1, transitions2))
-        
-        eta = 0
-        tau_e = 0
-        for i in range(len(transitions1)):
-            if i % 2 == 1:
-                eta += (transitions1[i] - transitions1[i-1]) + (transitions2[i] - transitions2[i-1])
-            if i % 8 == 7:
-                tau_e += (transitions1[i] - transitions1[i-7]) + (transitions2[i] - transitions2[i-7])
-        eta = len(transitions1) / eta
-        tau_e = tau_e / (len(transitions1) / 7)
-        
-        print("tau_e: " + str(tau_e) + " eta: " + str(eta) + " delta_t: " + str(delta_t))
-        return tau_e, eta, delta_t
-                
-        
     
+    # Compute the reward rate over sessiosn 
+    def learning_performance(self, correlations, interval):
+        correlations = np.transpose(correlations)
+        a0 = None
+        a1 = None
+        cnt = 0
+        success = 0
+        performance = [0]
+        for i in range(len(correlations)):
+            cur = self.get_action(np.argmax(correlations[i]))
+            if cur != a1: 
+                a0, a1 = a1, cur
+                self.water(a0, a1)
+            self.compute_reward(cur)
+            if self.reward == 1:
+                success += 1
+            cnt += 1
+            if cnt % interval == 0:
+                performance.append(success/(interval*0.001))
+                cnt = 0
+                success = 0
+        return performance
     
       
 class NetworkUpdateRule(object):

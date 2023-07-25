@@ -89,7 +89,7 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, lamb=0.9, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.2):
+    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
@@ -118,7 +118,7 @@ class RateNetwork(Network):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * .1
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * .25
             state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
             
             cal_ctx1, cal_ctx2 = determine_action(state1[:,i+1], patterns_ctx, thres=detection_thres), determine_action(state1[:,i], patterns_ctx, thres=detection_thres)
@@ -127,26 +127,22 @@ class RateNetwork(Network):
             cal_bg1, cal_bg2 = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres), determine_action(state2[:,i], patterns_bg, thres=detection_thres)
             if cal_bg1 != cal_bg2:
                 mouse.transitions2 = np.append(mouse.transitions2, i)            
-            
-            
+
             # Update eligibility trace
-            delta_t = 600
+            delta_t = delta_t
             if i - delta_t > 0:
-                pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
-                post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
-                
-                if eprev == [pre, post]:
-                    ecnt += 1
-                else:
-                    print(eprev, ecnt)
-                    ecnt = 0
-                    eprev = [pre, post]
-                if pre != -1: pre = patterns_ctx[pre]
-                else: pre = state1[:,i-delta_t]
-                if post != -1: post = patterns_bg[post]
-                else: post = state2[:,i+1]
-                
-                self.c_IE.update_etrace(pre, post, eta=0.0005, tau_e=1600, f=plasticity.f, g=plasticity.g)
+                if print_output:
+                    pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
+                    post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
+                    
+                    if eprev == [pre, post]:
+                        ecnt += 1
+                    else:
+                        print(eprev, ecnt)
+                        ecnt = 0
+                        eprev = [pre, post]
+
+                self.c_IE.update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
 
             # Detect pattern and hyperpolarizing current 
             prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
@@ -155,7 +151,8 @@ class RateNetwork(Network):
             # Detect water 
             if transition1: 
                 mouse.behaviors1[prev_idx1] = prev_action1
-                print(mouse.get_action(mouse.behaviors1[prev_idx1-1]) + "-->" + mouse.get_action(mouse.behaviors1[prev_idx1]))
+                if print_output:
+                    print(mouse.get_action(mouse.behaviors1[prev_idx1-1]) + "-->" + mouse.get_action(mouse.behaviors1[prev_idx1]))
                 mouse.water(mouse.get_action(mouse.behaviors1[prev_idx1-1]),
                             mouse.get_action(mouse.behaviors1[prev_idx1])) 
             if transition2:
@@ -164,8 +161,9 @@ class RateNetwork(Network):
             # Detect reward
             mouse.compute_reward(mouse.get_action(mouse.behaviors1[prev_idx1]))
             if mouse.reward:
-                print('Mouse received reward')
-                self.reward_etrace(E=self.c_IE.E, lamb=0.5, R=1)
+                if print_output:
+                    print('Mouse received reward')
+                self.reward_etrace(E=self.c_IE.E, lamb=lamb, R=1)
                 reward = False
 
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
@@ -194,8 +192,7 @@ class RateNetwork(Network):
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             noise = np.random.normal(size=self.size)
-            dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            
+            dr1, dr2 = fun(i, state1[:,i], state2[:,i])    
             state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0.25
             state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.25
             

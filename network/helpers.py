@@ -12,6 +12,7 @@ def spike_to_rate(spikes, window_std=20):
         estimate[i,:] = y
     return estimate
 
+# Determines which action mouse is currently in 
 def determine_action(state, patterns, thres=0.6, correlations=False):
     if correlations:
         measure = [scipy.stats.pearsonr(state, p)[0] for p in patterns]
@@ -22,34 +23,14 @@ def determine_action(state, patterns, thres=0.6, correlations=False):
         return maxind
     return -1
 
+# Hyperpolarizing current if at an action for thres ms 
 def hyperpolarizing_current(action_dur, cur_action=-1, thres=200, cur=-10):
     if action_dur > thres and cur_action != -1:
         return lambda t:cur 
     else:
         return lambda t:0
 
-def learning_performance(mouse, correlations, interval):
-    correlations = np.transpose(correlations)
-    a0 = None
-    a1 = None
-    cnt = 0
-    success = 0
-    performance = [0]
-    for i in range(len(correlations)):
-        cur = mouse.get_action(np.argmax(correlations[i]))
-        if cur != a1: 
-            a0, a1 = a1, cur
-            mouse.water(a0, a1)
-        mouse.compute_reward(cur)
-        if mouse.reward == 1:
-            success += 1
-        cnt += 1
-        
-        if cnt % interval == 0:
-            performance.append(success/(interval*0.001))
-            cnt = 0
-            success = 0
-    return performance
+
         
         
         
