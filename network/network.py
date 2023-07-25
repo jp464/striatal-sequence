@@ -118,8 +118,8 @@ class RateNetwork(Network):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * .25
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .25
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * .12
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .12
             
             cal_ctx1, cal_ctx2 = determine_action(state1[:,i+1], patterns_ctx, thres=detection_thres), determine_action(state1[:,i], patterns_ctx, thres=detection_thres)
             if cal_ctx1 != cal_ctx2:
@@ -193,8 +193,8 @@ class RateNetwork(Network):
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])    
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0.25
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.25
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0.12
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.12
             
             # Add hyperpolarizing current
             prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
