@@ -89,7 +89,7 @@ class RateNetwork(Network):
         elif self.formulation == 4:
             self._fun = self._fun4
             
-    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
@@ -118,8 +118,8 @@ class RateNetwork(Network):
             # Update firing rate 
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * .12
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * .12
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * noise1
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * noise2
             
             cal_ctx1, cal_ctx2 = determine_action(state1[:,i+1], patterns_ctx, thres=detection_thres), determine_action(state1[:,i], patterns_ctx, thres=detection_thres)
             if cal_ctx1 != cal_ctx2:
@@ -169,7 +169,7 @@ class RateNetwork(Network):
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
     
-    def simulate_euler2(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, detection_thres, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_euler2(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, detection_thres, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -193,8 +193,8 @@ class RateNetwork(Network):
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])    
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * 0.12
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * 0.12
+            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * noise1
+            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * noise2
             
             # Add hyperpolarizing current
             prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
