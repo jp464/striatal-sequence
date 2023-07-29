@@ -129,7 +129,6 @@ class RateNetwork(Network):
                 mouse.transitions2 = np.append(mouse.transitions2, i)            
 
             # Update eligibility trace
-            delta_t = delta_t
             if i - delta_t > 0:
                 if print_output:
                     pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)

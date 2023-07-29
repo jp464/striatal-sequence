@@ -53,12 +53,12 @@ net_bg = RateNetwork(bg, c_II=J_bb, c_EI=J_cb, formulation=4)
 ### Simiulation
 init_input_ctx = np.random.RandomState().normal(0,1,size=patterns_ctx[0][0].shape)
 init_input_bg = np.random.RandomState().normal(0,1,size=patterns_bg[0][0].shape)
-T=1000 #ms
+T=500 #ms
 mouse = ReachingTask()
 net_ctx.simulate_learning(mouse, net_bg, T, init_input_ctx, init_input_bg, 
                           patterns_ctx[0], patterns_bg[0], plasticity, 
-                          delta_t=400, eta=0.0001, tau_e=1600, lamb=0.5, 
-                          noise1=.14, noise2=.14, print_output=False)
+                          delta_t=500, eta=0.0005, tau_e=1600, lamb=0.5, 
+                          noise1=.12, noise2=.12, print_output=False)
 
 ### Save
 overlaps_ctx = sequences_ctx[0].overlaps(net_ctx, ctx)
