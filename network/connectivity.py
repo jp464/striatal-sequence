@@ -9,6 +9,32 @@ from itertools import cycle
 
 logger = logging.getLogger(__name__)
 
+# sets connectivity for multi-network model
+def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
+    Jmat = np.array([])
+    for pop1 in range(len(pops)):
+        rowblock = np.array([])
+        for pop2 in range(len(pops)):
+            J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
+                                  p=cp[pop2][pop1])
+            synapse = LinearSynapse(J.K, A[pop2][pop1])
+            rule = plasticity_rule[pop2][pop1]
+            if rule == 0:
+                J.store_attractors(patterns[pop1][0], patterns[pop2][0], synapse.h_EE,
+                                  plasticity.f, plasticity.g)
+            elif rule == 1:
+                J.store_sequences(patterns[pop1], patterns[pop2], synapse.h_EE,
+                                 plasticity.f, plasticity.g)
+            elif rule == 2:
+                J.set_random(var=1, h=synapse.h_EE)
+            rowblock = np.append(rowblock, J)
+        rowblock = rowblock.reshape(len(pops), 1)
+        Jmat = np.concatenate((Jmat, rowblock), axis=1) if Jmat.size else rowblock
+    return Jmat
+
+def reset_connectivity(self):
+    raise NotImplementedError
+        
 class Connectivity(object):
     def __init__(self):
         self.W = None
@@ -16,12 +42,6 @@ class Connectivity(object):
 
     def scale_all(self, value):
         self.W *= value
-
-    def set_connectivity(self):
-        raise NotImplementedError
-
-    def reset_connectivity(self):
-        raise NotImplementedError
 
     @staticmethod
     def _store_sequences(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):

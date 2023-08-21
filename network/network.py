@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
 from connectivity import Connectivity
-from helpers import spike_to_rate, determine_action, hyperpolarizing_current
+from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
 from transfer_functions import erf
@@ -36,24 +36,13 @@ class SpikingNeurons(Population):
 
 
 class Network(object):
-    def __init__(self, exc, inh=None, 
-            c_EE=Connectivity(), c_IE=Connectivity(), 
-            c_EI=Connectivity(), c_II=Connectivity()):
+    def __init__(self, pops, J, inh=None):
         """
         """
-        self.c_EE = c_EE
-        self.c_IE = c_IE
-        self.c_EI = c_EI
-        self.c_II = c_II
-        self.exc = exc
+        self.pops = pops 
+        self.J = J
         self.inh = inh
-        self.size = exc.size
         self.t = np.array([])
-        self.W_EE = c_EE.W
-        self.W = scipy.sparse.bmat([
-            [c_EE.W, c_EI.W],
-            [c_IE.W, c_II.W]
-        ]).tocsr()
         if inh:
             self.W_EI = c_EI.W
             self.W_IE = c_IE.W
@@ -64,22 +53,18 @@ class Network(object):
             ])
             self.size += self.inh.size
         else:
-            self.tau = exc.tau
+            self.tau = pops[0].tau
         self.xi = None
-        self.r_ext = lambda t:0
-        self.etrace = np.zeros((self.size, self.size))
+        self.r_ext = [lambda t:0 for i in range(len(pops))]
+#         self.etrace = np.zeros((self.size, self.size))
 
 
 class RateNetwork(Network):
-    def __init__(self, exc, inh=None,
-            c_EE=Connectivity(), c_IE=Connectivity(), 
-            c_EI=Connectivity(), c_II=Connectivity(),
-            formulation=1,
-            disable_pbar=False):
-        super(RateNetwork, self).__init__(exc, inh, c_EE, c_IE, c_EI, c_II)
+    def __init__(self, pops, J, inh=None, formulation=1, disable_pbar=False):
+        super(RateNetwork, self).__init__(pops, J, inh)
         self.formulation = formulation
         self.disable_pbar = disable_pbar
-        self.hyperpolarize_dur = 0 
+        self.hyperpolarize_dur = [0 for i in range(len(pops))] 
         if self.formulation == 1:
             self._fun = self._fun1
         elif self.formulation == 2:
@@ -168,20 +153,19 @@ class RateNetwork(Network):
         self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
         net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
     
-    def simulate_euler2(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, detection_thres, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_euler2(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, detection_thres, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
             pbar = progressbar.NullBar()
-            fun = self._fun(net2, pbar,t)
+            fun = self._fun(pbar,t)
         else:
-            fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
+            fun = self._fun(tqdm(total=int(t/dt)-1),t)
             
         # Initial conditions                
-        self.r_ext = r_ext
-        state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
+        state1 = np.zeros((self.pops[0].size, int((t-t0)/dt)))
         state1[:,0] = r1
-        state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
+        state2 = np.zeros((self.pops[1].size, int((t-t0)/dt)))
         state2[:,0] = r2
         prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=detection_thres)
         prev_idx1 = 0
@@ -190,17 +174,18 @@ class RateNetwork(Network):
 
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])    
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * noise1
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * noise2
+            state1[:,i+1] = state1[:,i] + dt * dr1 + np.random.normal(size=self.pops[0].size) * noise1
+            state2[:,i+1] = state2[:,i] + dt * dr2 + np.random.normal(size=self.pops[1].size) * noise2
             
-            # Add hyperpolarizing current
-            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
-            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=100)
+            prev_action1, prev_idx1, mouse.action_dur1, transition1 = action_transition(prev_action1, prev_idx1, mouse.action_dur1, state1[:,i+1], patterns_ctx, thres=detection_thres)
+            prev_action2, prev_idx2, mouse.action_dur2, transition2 = action_transition(prev_action2, prev_idx2, mouse.action_dur2, state2[:,i+1], patterns_bg, thres=detection_thres)
+            self.r_ext[1], self.hyperpolarize_dur[1] = hyperpolarize(self.hyperpolarize_dur[1], prev_action2, mouse.action_dur2, self.r_ext[1], thres=500, h_dur=60, cur=-10)
+            
+            
 
-        self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
-        net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]])
+        self.pops[0].state = np.hstack([self.pops[0].state, state1[:self.pops[0].size,:]])
+        self.pops[1].state = np.hstack([self.pops[1].state, state2[:self.pops[1].size,:]])
 
         
     def simulate(self, t, r0, t0=0, dt=1e-3, r_ext=lambda t: 0):
@@ -332,7 +317,7 @@ class RateNetwork(Network):
             return dr
         return f
     
-    def _fun4(self, net2, pbar, t_max):
+    def _fun4(self, pbar, t_max):
         def f(t, r1, r2, return_field=False):
             """
             Rate formulation 1
@@ -343,10 +328,10 @@ class RateNetwork(Network):
             if self.inh:
                 raise NotImplemented
             else:
-                phi_r = self.exc.phi
-            r_sum1 = phi_r(self.W[0:self.size,:].dot(r1) + net2.W[0:self.size,:].dot(r2) + self.r_ext(t)) 
-            r_sum2 = phi_r(self.W[self.size:self.size*2,:].dot(r1) + net2.W[self.size:self.size*2,:].dot(r2) + net2.r_ext(t)) 
-
+                phi_r = self.pops[0].phi
+            r_sum1 = phi_r(self.J[0][0].W.dot(r1) + self.J[0][1].W.dot(r2) + self.r_ext[0](t))
+            r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[1][0].W.dot(r1) + self.r_ext[1](t))
+            
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau
 
@@ -374,24 +359,7 @@ class RateNetwork(Network):
             self.inh.state = np.array([], ndmin=2).reshape(self.inh.size,0)
             self.inh.field = np.array([], ndmin=2).reshape(self.inh.size,0)
 
-    def lc(self, prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, state, patterns, thres, hthres=300, hdur=50):
-        cur_action = determine_action(state, patterns, thres)
-        transition = False 
-        action_dur += 1
-        if prev_action != cur_action:
-            action_dur = 0
-            prev_action = cur_action 
-            if cur_action != -1:
-                prev_idx += 1 
-                transition = True
-        
-        if hyperpolarize_dur > 0 and hyperpolarize_dur < hdur:
-            hyperpolarize_dur += 1
-        else:
-            hyperpolarize_dur = 0
-            r_ext = hyperpolarizing_current(action_dur, cur_action, thres=hthres, cur=-10)
-            if r_ext(0) != 0: hyperpolarize_dur += 1
-        return prev_action, prev_idx, action_dur, hyperpolarize_dur, r_ext, transition
+
     
     def reward_etrace(self, E, lamb, R):
         self.c_IE.W = lamb * self.c_IE.W + R * E.tocsr()

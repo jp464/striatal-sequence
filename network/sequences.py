@@ -11,7 +11,7 @@ class Sequence(object):
         "P x N"
         pass
 
-    def overlaps(self, net, pop, phi=None, plasticity=None, spikes=False, correlation=False, disable_pbar=False):
+    def overlaps(self, pop, phi=None, plasticity=None, spikes=False, correlation=False, disable_pbar=False):
         if correlation:
             logger.info("Computing correlations")
         else:
@@ -30,9 +30,9 @@ class Sequence(object):
                         [pearsonr(pattern, rate[:,t])[0] for t in range(rate.shape[1])])
                 else:
                     overlap = np.asarray(
-                        [pearsonr(pattern, pop.state[:,t])[0] for t in range(net.exc.state.shape[1])])
+                        [pearsonr(pattern, pop.state[:,t])[0] for t in range(pop.state.shape[1])])
             else:
-                overlap = net.overlap_with(pattern, pop, spikes)
+                overlap = pop.state.T.dot(pattern) / pop.size
             overlaps.append(overlap)
         return np.vstack(overlaps)
 
