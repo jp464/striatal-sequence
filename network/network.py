@@ -113,20 +113,20 @@ class RateNetwork(Network):
             state1[:,i+1] = state1[:,i] + dt * dr1 + np.random.normal(size=self.pops[0].size) * noise1
             state2[:,i+1] = state2[:,i] + dt * dr2 + np.random.normal(size=self.pops[1].size) * noise2     
 
-#             # Update eligibility trace
-#             if i - delta_t > 0:
-#                 if print_output:
-#                     pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
-#                     post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
+            # Update eligibility trace
+            if i - delta_t > 0:
+                if print_output:
+                    pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
+                    post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
                     
-#                     if eprev == [pre, post]:
-#                         ecnt += 1
-#                     else:
-#                         print(eprev, ecnt)
-#                         ecnt = 0
-#                         eprev = [pre, post]
+                    if eprev == [pre, post]:
+                        ecnt += 1
+                    else:
+                        print(eprev, ecnt)
+                        ecnt = 0
+                        eprev = [pre, post]
 
-#                 self.J[1][0].update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                self.J[1][0].update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
             
             # detect action transition
             prev_action1, prev_idx1, mouse.action_dur1, transition1 = action_transition(prev_action1, prev_idx1, mouse.action_dur1, state1[:,i+1], patterns_ctx, thres=detection_thres)
@@ -150,7 +150,7 @@ class RateNetwork(Network):
             if mouse.reward:
                 if print_output:
                     print('Mouse received reward')
-                self.reward_etrace(E=self.c_IE.E, lamb=lamb, R=1)
+                self.J[1][0].W = self.reward_etrace(W=self.J[1][0].W, E=self.J[1][0].E, lamb=lamb, R=1)
                 reward = False
 
         self.pops[0].state = np.hstack([self.pops[0].state, state1[:self.pops[0].size,:]])
@@ -395,12 +395,8 @@ class RateNetwork(Network):
 
 
     
-    def reward_etrace(self, E, lamb, R):
-        self.c_IE.W = lamb * self.c_IE.W + R * E.tocsr()
-        self.W = scipy.sparse.bmat([
-            [self.c_EE.W, self.c_EI.W],
-            [self.c_IE.W, self.c_II.W]
-        ]).tocsr()
+    def reward_etrace(self, W, E, lamb, R):
+        return lamb * W+ R * E.tocsr()
         
 class PoissonNetwork(Network):
     def __init__(self, exc, inh=None,

@@ -25,8 +25,8 @@ def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
             elif rule == 1:
                 J.store_sequences(patterns[pop1], patterns[pop2], synapse.h_EE,
                                  plasticity.f, plasticity.g)
-                J.update_sequences(patterns[pop1][0][2], patterns[pop2][0][0], 1,
-                                  f=plasticity.f, g=plasticity.g)
+                J.update_sequences(patterns[pop1][0][-1], patterns[pop2][0][0], synapse.h_EE,
+                                  plasticity.f, plasticity.g)
             elif rule == 2:
                 J.set_all(synapse.h_EE(-1))
             rowblock = np.append(rowblock, J)
@@ -159,13 +159,13 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
     
-    def update_sequences(self, inputs_pre, inputs_post, Q, lamb=0.8, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+    def update_sequences(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         N = inputs_post.shape[0]
-#         logger.info("Updating network")
+        logger.info("Updating network")
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
-        data = np.asarray(data) / self.K
+        data = h(data)
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
-        self.W = lamb * self.W + Q * W.tocsr()
+        self.W += W.tocsr()
         
     def update_etrace(self, inputs_pre, inputs_post, eta, tau_e, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         N = inputs_post.shape[0]
