@@ -55,7 +55,7 @@ mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_input_ctx, init_input_d1, 
                           patterns_ctx[0], patterns_d1[0], plasticity, 
                           delta_t=500, eta=0.0005, tau_e=1600, lamb=0.5, 
-                          noise1=.13, noise2=.13, print_output=False)
+                          noise1=.13, noise2=.13, etrace=True, print_output=False)
 
 ### Save
 overlaps_ctx = sequences_ctx[0].overlaps(network.pops[0])

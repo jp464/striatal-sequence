@@ -77,7 +77,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, etrace=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
@@ -114,7 +114,7 @@ class RateNetwork(Network):
             state2[:,i+1] = state2[:,i] + dt * dr2 + np.random.normal(size=self.pops[1].size) * noise2     
 
             # Update eligibility trace
-            if i - delta_t > 0:
+            if i - delta_t > 0 and etrace:
                 if print_output:
                     pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
                     post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)

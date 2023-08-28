@@ -1,10 +1,18 @@
 #!/bin/bash
-
 #SBATCH --job-name=learning
 #SBATCH --output=learning.out
-#SBATCH --ntasks=4
-#SBATCH --cpus-per-task 4
-#SBATCH --mem-per-cpu 20G
+#SBATCH --cpus-per-task=20
+#SBATCH --mem-per-cpu=4G
+#SBATCH -a 1-4
+#SBATCH -e slurm.err
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=$jp464@duke.edu  
 
-srun --preserve-env --multi-prog ./learning.conf
+
+
+readarray -t FILES < learning.txt
+FILENAME=${FILES[(($SLURM_ARRAY_TASK_ID - 1))]}
+python learning.py $FILENAME
+
 

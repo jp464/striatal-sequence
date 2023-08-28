@@ -17,18 +17,14 @@ def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
         for pop2 in range(len(pops)):
             J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
                                   p=cp[pop2][pop1])
-            synapse = LinearSynapse(J.K, A[pop2][pop1])
-            rule = plasticity_rule[pop2][pop1]
-            if rule == 0:
-                J.store_attractors(patterns[pop1][0], patterns[pop2][0], synapse.h_EE,
-                                  plasticity.f, plasticity.g)
-            elif rule == 1:
-                J.store_sequences(patterns[pop1], patterns[pop2], synapse.h_EE,
-                                 plasticity.f, plasticity.g)
-                J.update_sequences(patterns[pop1][0][-1], patterns[pop2][0][0], synapse.h_EE,
-                                  plasticity.f, plasticity.g)
-            elif rule == 2:
-                J.set_all(synapse.h_EE(-1))
+            Atemp = A[pop2][pop1]
+            for j in range(len(patterns[pop1][0])):
+                for i in range(len(patterns[pop2][0])):
+                    synapse = LinearSynapse(J.K, Atemp[i][j])
+                    J.update_sequences(patterns[pop1][0][j], patterns[pop2][0][i], synapse.h_EE,
+                                     plasticity.f, plasticity.g)
+#             elif rule == 2:
+#                 J.set_all(synapse.h_EE(-1))
             rowblock = np.append(rowblock, J)
         rowblock = rowblock.reshape(len(pops), 1)
         Jmat = np.concatenate((Jmat, rowblock), axis=1) if Jmat.size else rowblock
@@ -161,7 +157,6 @@ class SparseConnectivity(Connectivity):
     
     def update_sequences(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x):
         N = inputs_post.shape[0]
-        logger.info("Updating network")
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
         data = h(data)
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
