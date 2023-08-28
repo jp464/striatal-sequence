@@ -39,10 +39,22 @@ cp = np.array([[0.05,  0.05],
                [0.05, 0.05]])
 cw = np.array([[0, 0],
                [0, 0]])
-A = np.array([[5, 1],
-             [0, 5]])
+A = np.array([[[[5,0,0],
+               [0,5,0],
+               [0,0,5]],
+              [[1,0,0],
+               [0,1,0],
+               [0,0,1]]],
+              [[[0,0,0],
+               [0,0,0],
+               [0.06,0,0]],
+              [[5.5,0,0],
+               [0,5,0],
+               [0,0,5]]]])
+
 plasticity_rule = np.array([[0, 0],
-                          [1, 0]])
+                          [0, 0]])
+
 J = set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity)
 
 network = RateNetwork(pops, J, formulation=4)
@@ -61,7 +73,7 @@ network.simulate_learning(mouse, T, init_input_ctx, init_input_d1,
 overlaps_ctx = sequences_ctx[0].overlaps(network.pops[0])
 overlaps_d1 = sequences_d1[0].overlaps(network.pops[1])
 correlations_ctx = sequences_ctx[0].overlaps(network.pops[0], correlation=True)
-correlations_d1 = sequences_d1[0].overlaps(network.pops[1], bg, correlation=True)
+correlations_d1 = sequences_d1[0].overlaps(network.pops[1], correlation=True)
 np.savez('/work/jp464/striatum-sequence/' + filename + '.npz', 
          overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1, 
          correlations_ctx=correlations_ctx, correlations_d1=correlations_d1, 
