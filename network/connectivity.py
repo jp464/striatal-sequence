@@ -25,8 +25,10 @@ def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
             elif rule == 1:
                 J.store_sequences(patterns[pop1], patterns[pop2], synapse.h_EE,
                                  plasticity.f, plasticity.g)
+                J.update_sequences(patterns[pop1][0][2], patterns[pop2][0][0], 1,
+                                  f=plasticity.f, g=plasticity.g)
             elif rule == 2:
-                J.set_random(var=1, h=synapse.h_EE)
+                J.set_all(synapse.h_EE(-1))
             rowblock = np.append(rowblock, J)
         rowblock = rowblock.reshape(len(pops), 1)
         Jmat = np.concatenate((Jmat, rowblock), axis=1) if Jmat.size else rowblock
@@ -190,6 +192,7 @@ class SparseConnectivity(Connectivity):
         data = np.asarray(data, dtype=float)
         data[:] = np.sqrt(var)*np.random.randn(data.size)
         data = h(data)
+        print(data)
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
 

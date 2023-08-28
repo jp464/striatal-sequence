@@ -19,6 +19,7 @@ class Population(object):
         self.name = name
         self.size = N
         self.state = np.array([], ndmin=2).reshape(N,0)
+        self.depression = np.array([], ndmin=2).reshape(N,0)
         self.field = np.array([], ndmin=2).reshape(N,0)
         self.tau = tau
         self.phi = phi
@@ -73,64 +74,66 @@ class RateNetwork(Network):
             self._fun = self._fun3
         elif self.formulation == 4:
             self._fun = self._fun4
+        elif self.formulation == 5:
+            self._fun = self._fun5
             
-    def simulate_learning(self, mouse, net2, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar.NullBar()
-            fun = self._fun(net2, pbar,t)
+            fun = self._fun(pbar,t)
         else:
-            fun = self._fun(net2, tqdm(total=int(t/dt)-1),t)
+            fun = self._fun(tqdm(total=int(t/dt)-1),t)
         ur = NetworkUpdateRule()  
         
-        # Initial conditions      
-        state1 = np.zeros((self.exc.size, int((t-t0)/dt)))
+        # initial patterns       
+        state1 = np.zeros((self.pops[0].size, int((t-t0)/dt)))
         state1[:,0] = r1
-        state2 = np.zeros((net2.exc.size, int((t-t0)/dt)))
+        state2 = np.zeros((self.pops[1].size, int((t-t0)/dt)))
         state2[:,0] = r2
-        mouse.behaviors1 = np.empty(int((t-t0)/dt), dtype=np.int8)
-        mouse.behaviors2 = np.empty(int((t-t0)/dt), dtype=np.int8)
+        
+        # initial actions 
         prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=detection_thres)
         prev_idx1 = 0
-        mouse.behaviors1[prev_idx1] = prev_action1
         prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
         prev_idx2 = 0
+        
+        mouse.behaviors1 = np.empty(int((t-t0)/dt), dtype=np.int8)
+        mouse.behaviors2 = np.empty(int((t-t0)/dt), dtype=np.int8)
+        mouse.behaviors1[prev_idx1] = prev_action1
         mouse.behaviors2[prev_idx2] = prev_action2
+        
+        # eligibility trace parameters  
         eprev = None
         ecnt = 0
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
-            noise = np.random.normal(size=self.size)
             dr1, dr2 = fun(i, state1[:,i], state2[:,i])
-            state1[:,i+1] = state1[:,i] + dt * dr1 + noise * noise1
-            state2[:,i+1] = state2[:,i] + dt * dr2 + noise * noise2
-            
-            cal_ctx1, cal_ctx2 = determine_action(state1[:,i+1], patterns_ctx, thres=detection_thres), determine_action(state1[:,i], patterns_ctx, thres=detection_thres)
-            if cal_ctx1 != cal_ctx2:
-                mouse.transitions1 = np.append(mouse.transitions1, i)
-            cal_bg1, cal_bg2 = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres), determine_action(state2[:,i], patterns_bg, thres=detection_thres)
-            if cal_bg1 != cal_bg2:
-                mouse.transitions2 = np.append(mouse.transitions2, i)            
+            state1[:,i+1] = state1[:,i] + dt * dr1 + np.random.normal(size=self.pops[0].size) * noise1
+            state2[:,i+1] = state2[:,i] + dt * dr2 + np.random.normal(size=self.pops[1].size) * noise2     
 
-            # Update eligibility trace
-            if i - delta_t > 0:
-                if print_output:
-                    pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
-                    post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
+#             # Update eligibility trace
+#             if i - delta_t > 0:
+#                 if print_output:
+#                     pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
+#                     post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
                     
-                    if eprev == [pre, post]:
-                        ecnt += 1
-                    else:
-                        print(eprev, ecnt)
-                        ecnt = 0
-                        eprev = [pre, post]
+#                     if eprev == [pre, post]:
+#                         ecnt += 1
+#                     else:
+#                         print(eprev, ecnt)
+#                         ecnt = 0
+#                         eprev = [pre, post]
 
-                self.c_IE.update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-
-            # Detect pattern and hyperpolarizing current 
-            prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, transition1 = self.lc(prev_action1, prev_idx1, mouse.action_dur1, self.hyperpolarize_dur, self.r_ext, state1[:,i+1], patterns_ctx, detection_thres, hthres=float('inf'), hdur=100)   
-            prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, transition2 = self.lc(prev_action2, prev_idx2, mouse.action_dur2, net2.hyperpolarize_dur, net2.r_ext, state2[:,i+1], patterns_bg, detection_thres, hthres=500, hdur=100)
+#                 self.J[1][0].update_etrace(state1[:,i-delta_t], state2[:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+            
+            # detect action transition
+            prev_action1, prev_idx1, mouse.action_dur1, transition1 = action_transition(prev_action1, prev_idx1, mouse.action_dur1, state1[:,i+1], patterns_ctx, thres=detection_thres)
+            prev_action2, prev_idx2, mouse.action_dur2, transition2 = action_transition(prev_action2, prev_idx2, mouse.action_dur2, state2[:,i+1], patterns_bg, thres=detection_thres)
+            
+            # hyperpolarizing current 
+            self.r_ext[1], self.hyperpolarize_dur[1] = hyperpolarize(self.hyperpolarize_dur[1], prev_action2, mouse.action_dur2, self.r_ext[1], thres=500, h_dur=60, cur=-10)
             
             # Detect water 
             if transition1: 
@@ -150,10 +153,10 @@ class RateNetwork(Network):
                 self.reward_etrace(E=self.c_IE.E, lamb=lamb, R=1)
                 reward = False
 
-        self.exc.state = np.hstack([self.exc.state, state1[:self.exc.size,:]])
-        net2.exc.state = np.hstack([net2.exc.state, state2[:net2.exc.size,:]]) 
+        self.pops[0].state = np.hstack([self.pops[0].state, state1[:self.pops[0].size,:]])
+        self.pops[1].state = np.hstack([self.pops[1].state, state2[:self.pops[1].size,:]])
     
-    def simulate_euler2(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, detection_thres, noise1, noise2, t0=0, dt=1e-3, r_ext=lambda t: 0):
+    def simulate_euler2(self, mouse, t, r1, r2, r3, y2, y3, patterns_ctx, patterns_d1, patterns_d2, detection_thres, noise1, noise2, noise3, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
         
         if self.disable_pbar:
@@ -167,26 +170,26 @@ class RateNetwork(Network):
         state1[:,0] = r1
         state2 = np.zeros((self.pops[1].size, int((t-t0)/dt)))
         state2[:,0] = r2
-        prev_action1 = determine_action(state1[:,0], patterns_ctx, thres=detection_thres)
-        prev_idx1 = 0
-        prev_action2 = determine_action(state2[:,0], patterns_bg, thres=detection_thres)
-        prev_idx2 = 0
-
+        state3 = np.zeros((self.pops[2].size, int((t-t0)/dt)))
+        state3[:,0] = r3
+        depression2 = np.zeros((self.pops[1].size, int((t-t0)/dt)))
+        depression2[:,0] = y2 
+        depression3 = np.zeros((self.pops[2].size, int((t-t0)/dt)))
+        depression3[:,0] = y3
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            dr1, dr2 = fun(i, state1[:,i], state2[:,i])    
+            dr1, dr2, dr3, dy2, dy3 = fun(i, state1[:,i], state2[:,i], state3[:,i], depression2[:,i], depression3[:,i], beta=.01)    
             state1[:,i+1] = state1[:,i] + dt * dr1 + np.random.normal(size=self.pops[0].size) * noise1
             state2[:,i+1] = state2[:,i] + dt * dr2 + np.random.normal(size=self.pops[1].size) * noise2
-            
-            prev_action1, prev_idx1, mouse.action_dur1, transition1 = action_transition(prev_action1, prev_idx1, mouse.action_dur1, state1[:,i+1], patterns_ctx, thres=detection_thres)
-            prev_action2, prev_idx2, mouse.action_dur2, transition2 = action_transition(prev_action2, prev_idx2, mouse.action_dur2, state2[:,i+1], patterns_bg, thres=detection_thres)
-            self.r_ext[1], self.hyperpolarize_dur[1] = hyperpolarize(self.hyperpolarize_dur[1], prev_action2, mouse.action_dur2, self.r_ext[1], thres=500, h_dur=60, cur=-10)
-            
-            
+            state3[:,i+1] = state3[:,i] + dt * dr3 + np.random.normal(size=self.pops[2].size) * noise3
+            depression2[:,i+1] = depression2[:,i] + dt * dy2 
+            depression3[:,i+1] = depression3[:,i] + dt * dy3
 
         self.pops[0].state = np.hstack([self.pops[0].state, state1[:self.pops[0].size,:]])
         self.pops[1].state = np.hstack([self.pops[1].state, state2[:self.pops[1].size,:]])
-
+        self.pops[2].state = np.hstack([self.pops[2].state, state3[:self.pops[2].size,:]])
+        self.pops[1].depression = np.hstack([self.pops[1].depression, depression2[:self.pops[1].size,:]])
+        self.pops[2].depression = np.hstack([self.pops[2].depression, depression3[:self.pops[2].size,:]])
         
     def simulate(self, t, r0, t0=0, dt=1e-3, r_ext=lambda t: 0):
         """
@@ -320,7 +323,7 @@ class RateNetwork(Network):
     def _fun4(self, pbar, t_max):
         def f(t, r1, r2, return_field=False):
             """
-            Rate formulation 1
+            Rate formulation 4
             """
             # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
             pbar.update(1)
@@ -329,6 +332,7 @@ class RateNetwork(Network):
                 raise NotImplemented
             else:
                 phi_r = self.pops[0].phi
+                
             r_sum1 = phi_r(self.J[0][0].W.dot(r1) + self.J[0][1].W.dot(r2) + self.r_ext[0](t))
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[1][0].W.dot(r1) + self.r_ext[1](t))
             
@@ -339,6 +343,36 @@ class RateNetwork(Network):
                 return dr, r_sum
             else:
                 return dr1, dr2
+
+        return f
+    
+    def _fun5(self, pbar, t_max):
+        def f(t, r1, r2, r3, y2, y3, beta=.1, return_field=False):
+            """
+            Rate formulation 5
+            """
+            # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
+            pbar.update(1)
+
+            if self.inh:
+                raise NotImplemented
+            else:
+                phi_r = self.pops[0].phi
+            
+            r_sum1 = phi_r(self.J[0][0].W.dot(r1) + self.J[0][1].W.dot(r2) + self.J[0][2].W.dot(r3) + self.r_ext[0](t))
+            r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[1][0].W.dot(r1) + self.J[1][2].W.dot(r3) * y3 * r3 + self.r_ext[1](t))
+            r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[2][0].W.dot(r1) + self.J[2][1].W.dot(r2) * y2 * r2 + self.r_ext[2](t))
+            
+            dr1 = (-r1 + r_sum1) / self.tau
+            dr2 = (-r2 + r_sum2) / self.tau
+            dr3 = (-r3 + r_sum3) / self.tau     
+            dy2 = (-(y2-1) * (1-r_sum2) - (y2-beta) * r_sum2) / (.8)
+            dy3 = (-(y3-1) * (1-r_sum3) - (y3-beta) * r_sum3) / (.8)
+
+            if return_field:
+                return dr, r_sum
+            else:
+                return dr1, dr2, dr3, dy2, dy3
 
         return f
     
