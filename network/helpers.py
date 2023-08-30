@@ -35,20 +35,20 @@ def action_transition(prev_action, prev_idx, action_dur, state, patterns, thres)
     return cur_action, prev_idx, action_dur, transition
 
 # Hyperpolarizing current if at an action for thres ms 
-def hyperpolarize(hyperpolarize_dur, cur_action, action_dur, r_ext, thres=500, h_dur=50, cur=-10):
+def hyperpolarize(hyperpolarize_dur, cur_action, action_dur, r_ext, thres=500, h_dur=50, cur1=lambda t:-10, cur2=lambda t:0):
     if hyperpolarize_dur > 0 and hyperpolarize_dur < h_dur:
         hyperpolarize_dur += 1
     else:
         hyperpolarize_dur = 0
         if action_dur > thres and cur_action != -1:
-            r_ext = lambda t:cur 
+            r_ext = cur1
             hyperpolarize_dur += 1
         else:
-            r_ext = lambda t:0
+            r_ext = cur2
     return r_ext, hyperpolarize_dur
 
-
-        
+def adder(L, i):
+    return np.sum(L[0:i])
 
     
         

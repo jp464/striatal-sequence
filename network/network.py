@@ -77,14 +77,15 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, etrace=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r1, r2, patterns_ctx, patterns_bg, plasticity, delta_t, eta, tau_e, lamb, noise1, noise2, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
-            pbar = progressbar.NullBar()
+            pbar = progressbar
             fun = self._fun(pbar,t)
         else:
             fun = self._fun(tqdm(total=int(t/dt)-1),t)
-        ur = NetworkUpdateRule()  
+        
+        self.r_ext = r_ext.copy()
         
         # initial patterns       
         state1 = np.zeros((self.pops[0].size, int((t-t0)/dt)))
@@ -133,7 +134,8 @@ class RateNetwork(Network):
             prev_action2, prev_idx2, mouse.action_dur2, transition2 = action_transition(prev_action2, prev_idx2, mouse.action_dur2, state2[:,i+1], patterns_bg, thres=detection_thres)
             
             # hyperpolarizing current 
-            self.r_ext[1], self.hyperpolarize_dur[1] = hyperpolarize(self.hyperpolarize_dur[1], prev_action2, mouse.action_dur2, self.r_ext[1], thres=500, h_dur=60, cur=-10)
+            if hyper:
+                self.r_ext[1], self.hyperpolarize_dur[1] = hyperpolarize(self.hyperpolarize_dur[1], prev_action2, mouse.action_dur2, self.r_ext[1], thres=500, h_dur=60, cur1=lambda t:-10, cur2=r_ext[1])
             
             # Detect water 
             if transition1: 
@@ -150,7 +152,8 @@ class RateNetwork(Network):
             if mouse.reward:
                 if print_output:
                     print('Mouse received reward')
-                self.J[1][0].W = self.reward_etrace(W=self.J[1][0].W, E=self.J[1][0].E, lamb=lamb, R=1)
+                if etrace:
+                    self.J[1][0].W = self.reward_etrace(W=self.J[1][0].W, E=self.J[1][0].E, lamb=lamb, R=1)
                 reward = False
 
         self.pops[0].state = np.hstack([self.pops[0].state, state1[:self.pops[0].size,:]])
@@ -326,8 +329,10 @@ class RateNetwork(Network):
             Rate formulation 4
             """
             # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
-            pbar.update(1)
-
+            try:
+                pbar.update(1)
+            except:
+                pass
             if self.inh:
                 raise NotImplemented
             else:

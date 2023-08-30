@@ -6,25 +6,42 @@ import scipy.sparse
 from tqdm import trange
 from scipy.stats import lognorm, norm
 from itertools import cycle
+from helpers import adder 
 
 logger = logging.getLogger(__name__)
+
+
 
 # sets connectivity for multi-network model
 def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
     Jmat = np.array([])
+    seq_len = [len(p[0]) for p in patterns] # write helper fnc to get indicing sorted 
     for pop1 in range(len(pops)):
         rowblock = np.array([])
         for pop2 in range(len(pops)):
             J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
                                   p=cp[pop2][pop1])
-            Atemp = A[pop2][pop1]
-            for j in range(len(patterns[pop1][0])):
-                for i in range(len(patterns[pop2][0])):
-                    synapse = LinearSynapse(J.K, Atemp[i][j])
-                    J.update_sequences(patterns[pop1][0][j], patterns[pop2][0][i], synapse.h_EE,
-                                     plasticity.f, plasticity.g)
-#             elif rule == 2:
-#                 J.set_all(synapse.h_EE(-1))
+            rule = plasticity_rule[pop2][pop1]
+            sign = cw[pop2][pop1]
+            # store attractors or sequences 
+            if rule ==0 or rule == 1:
+                ind1, ind2 = int(np.sum(seq_len[0:pop1])), int(np.sum(seq_len[0:pop2]))
+                Atemp = A[ind2:ind2+seq_len[pop2], ind1:ind1+seq_len[pop1]]
+                for j in range(seq_len[pop1]):
+                    for i in range(seq_len[pop2]):
+                        synapse = LinearSynapse(J.K, Atemp[i][j])
+                        J.update_sequences(patterns[pop1][0][j], patterns[pop2][0][i],
+                                           synapse.h_EE, plasticity.f, plasticity.g)
+            # store random connectivity
+            elif rule == 2:
+                J.set_all(synapse.h_EE(-1))
+            
+            # sign constraint
+            if sign == 1:
+                J.W.data[J.W.data < 0] = 0
+            elif sign == -1:
+                J.W.data[J.W.data > 0] = 0
+                J.W.data[J.W.data < 0] -= 0.2
             rowblock = np.append(rowblock, J)
         rowblock = rowblock.reshape(len(pops), 1)
         Jmat = np.concatenate((Jmat, rowblock), axis=1) if Jmat.size else rowblock
