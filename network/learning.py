@@ -8,12 +8,8 @@ logger = logging.getLogger(__name__)
 class Learning(object):
     def __init__(self):
         self.actions = None
-        self.behaviors1 = None
-        self.behaviors2 = None
-        self.action_dur1 = 0
-        self.action_dur2 = 0
-        self.transitions1 = np.array([])
-        self.transitions2 = np.array([])
+        self.behaviors = None
+        self.transitions = None 
     
     def get_action(self, s):
         return self.actions[s]

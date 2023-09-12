@@ -119,6 +119,12 @@ class ErrorFunction(RateTransferFunction):
         def f(x):
             return 0.5 * (1 + erf_((x - self.mu) / (sqrt(2) * self.sigma)))
         return f
+    
+    @property
+    def decreasing_phi(self):
+        def f(x):
+            return 0.5 * (1+erf((-x+self.mu) / (sqrt(2) * self.sigma)))
+        return f
 
 @njit
 def erf(x):

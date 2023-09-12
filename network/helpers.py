@@ -23,16 +23,19 @@ def determine_action(state, patterns, thres=0.3, correlations=False):
         return maxind
     return -1
 
-def action_transition(prev_action, prev_idx, action_dur, state, patterns, thres):
-    cur_action = determine_action(state, patterns, thres)
-    transition = False
-    action_dur += 1
-    if prev_action != cur_action:
-        action_dur = 0
-        if cur_action != -1:
-            prev_idx += 1
-            transition = True 
-    return cur_action, prev_idx, action_dur, transition
+def action_transition(t, mouse, prev_actions, prev_idxs, states, patterns, thres):
+    transitions = []
+    for i in range(len(states)):
+        cur_action = determine_action(states[i][:,t], patterns[i], thres)
+        transition = False
+        if prev_actions[i] != cur_action:
+            if cur_action != -1:
+                prev_idxs[i] += 1 
+                transition = True 
+                mouse.behaviors[i][prev_idxs[i]] = cur_action
+        prev_actions[i] = cur_action
+        transitions.append(transition)
+    return transitions
 
 # Hyperpolarizing current if at an action for thres ms 
 def hyperpolarize(hyperpolarize_dur, cur_action, action_dur, r_ext, thres=500, h_dur=50, cur1=lambda t:-10, cur2=lambda t:0):

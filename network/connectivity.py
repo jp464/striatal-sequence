@@ -15,36 +15,40 @@ logger = logging.getLogger(__name__)
 # sets connectivity for multi-network model
 def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
     Jmat = np.array([])
-    seq_len = [len(p[0]) for p in patterns] # write helper fnc to get indicing sorted 
     for pop1 in range(len(pops)):
         rowblock = np.array([])
         for pop2 in range(len(pops)):
             J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
-                                  p=cp[pop2][pop1])
-            rule = plasticity_rule[pop2][pop1]
-            sign = cw[pop2][pop1]
-            # store attractors or sequences 
-            if rule ==0 or rule == 1:
-                ind1, ind2 = int(np.sum(seq_len[0:pop1])), int(np.sum(seq_len[0:pop2]))
-                Atemp = A[ind2:ind2+seq_len[pop2], ind1:ind1+seq_len[pop1]]
-                for j in range(seq_len[pop1]):
-                    for i in range(seq_len[pop2]):
-                        synapse = LinearSynapse(J.K, Atemp[i][j])
-                        J.update_sequences(patterns[pop1][0][j], patterns[pop2][0][i],
-                                           synapse.h_EE, plasticity.f, plasticity.g)
-            # store random connectivity
-            elif rule == 2:
-                J.set_all(synapse.h_EE(-1))
+                                  p=cp[pop1][pop2])
+            rule = plasticity_rule[pop1][pop2]
+            sign = cw[pop1][pop2]
             
-            # sign constraint
-            if sign == 1:
-                J.W.data[J.W.data < 0] = 0
-            elif sign == -1:
-                J.W.data[J.W.data > 0] = 0
-                J.W.data[J.W.data < 0] -= 0.2
+            for k in range(len(patterns[0])):
+                # store attractors or sequences 
+                if rule == 0 or rule == 1:
+                    Atemp = A[pop1][pop2]
+                    for i in range(Atemp.shape[0]):
+                        for j in range(Atemp.shape[1]):
+                            synapse = LinearSynapse(J.K, Atemp[i][j])
+                            J.update_sequences(patterns[pop1][k][i],
+                                               patterns[pop2][k][j], synapse.h_EE,
+                                               plasticity.f, plasticity.g)
+                            
+                # store random connectivity
+                elif rule == 2:
+                    synapse = LinearSynapse(J.K, 7)
+                    J.set_random(0, 1, synapse.h_EE)
+#                     J.set_all(-.05)
+
+                # sign constraint
+                if sign == 1:
+                    J.W.data[J.W.data < 0] = 0
+                elif sign == -1:
+                    J.W.data[J.W.data < 0] -= 0.2
+                    J.W.data[J.W.data > 0] = 0
             rowblock = np.append(rowblock, J)
-        rowblock = rowblock.reshape(len(pops), 1)
-        Jmat = np.concatenate((Jmat, rowblock), axis=1) if Jmat.size else rowblock
+
+        Jmat = np.vstack((Jmat, rowblock)) if Jmat.size else rowblock
     return Jmat
 
 def reset_connectivity(self):
@@ -199,10 +203,10 @@ class SparseConnectivity(Connectivity):
         w = mu + sigma*np.random.RandomState(seed).randn(self.W.data.size)
         self.W.data[:] += w
 
-    def set_random(self, var, h=lambda x:x):
+    def set_random(self, mu, var, h=lambda x:x):
         data, row, col = Connectivity._set_all(self.ij, 1)
         data = np.asarray(data, dtype=float)
-        data[:] = np.sqrt(var)*np.random.randn(data.size)
+        data[:] = np.sqrt(var)*(np.random.randn(data.size) + mu)
         data = h(data)
         print(data)
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
