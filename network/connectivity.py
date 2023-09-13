@@ -29,6 +29,7 @@ def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
                     Atemp = A[pop1][pop2]
                     for i in range(Atemp.shape[0]):
                         for j in range(Atemp.shape[1]):
+                            if Atemp[i][j] == 0: continue
                             synapse = LinearSynapse(J.K, Atemp[i][j])
                             J.update_sequences(patterns[pop1][k][i],
                                                patterns[pop2][k][j], synapse.h_EE,
@@ -37,8 +38,8 @@ def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
                 # store random connectivity
                 elif rule == 2:
                     synapse = LinearSynapse(J.K, 7)
-                    J.set_random(0, 1, synapse.h_EE)
-#                     J.set_all(-.05)
+#                     J.set_random(0, 1, synapse.h_EE)
+                    J.set_all(-5)
 
                 # sign constraint
                 if sign == 1:

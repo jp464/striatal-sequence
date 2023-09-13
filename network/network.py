@@ -114,12 +114,14 @@ class RateNetwork(Network):
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
-            dr, da = fun(i, states, adaptations)
+#             dr, da = fun(i, states, adaptations)
+            dr, ds= fun(i, states, deps, 0.01)
+                
             for k in range(self.Np):
                 GN = np.random.normal(size=self.pops[k].size) * noise[k]
                 states[k][:,i+1] = states[k][:,i] + dt * dr[k] + GN
-#                 deps[k][:,i+1] = deps[k][:,i] + dt * ds[k]
-                adaptations[k][:,i+1] = adaptations[k][:,i] + dt * da[k]
+                deps[k][:,i+1] = deps[k][:,i] + dt * ds[k]
+#                 adaptations[k][:,i+1] = adaptations[k][:,i] + dt * da[k]
 
             # Update eligibility trace
             if i - delta_t > 0 and etrace:
@@ -156,6 +158,7 @@ class RateNetwork(Network):
         for k in range(self.Np):
             self.pops[k].state = np.hstack([self.pops[k].state, states[k][:self.pops[k].size,:]])
             self.pops[k].adaptation = np.hstack([self.pops[k].adaptation, adaptations[k][:self.pops[k].size,:]])
+            self.pops[k].depression = np.hstack([self.pops[k].depression, deps[k][:self.pops[k].size,:]])
     
     def simulate_euler2(self, mouse, t, r1, r2, r3, y2, y3, patterns_ctx, patterns_d1, patterns_d2, detection_thres, noise1, noise2, noise3, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
@@ -339,23 +342,22 @@ class RateNetwork(Network):
             r1, r2, r3 = states[0][:,t], states[1][:,t], states[2][:,t]
             a1, a2, a3 = adaptations[0][:,t], adaptations[1][:,t], adaptations[2][:,t]
             
+
+            
             r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*.3)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.r_ext[2](t))
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
-            dr3 = np.zeros(len(r_sum3))
+            dr3 = (-r3 + r_sum3) / self.tau 
             da1 = (-a1 + r1) / (30*self.tau)
             da2 = np.zeros(len(r_sum2))
             da3 = np.zeros(len(r_sum3))
 
-            if return_field:
-                return dr, r_sum
-            else:
-                return [dr1, dr2, dr3], [da1, da2, da3]
+            return [dr1, dr2, dr3], [da1, da2, da3]
 
         return f
-    
+
     def _fun5(self, pbar, t_max):
         def f(t, states, deps, beta, return_field=False):
             """
@@ -371,30 +373,32 @@ class RateNetwork(Network):
                 raise NotImplemented
             else:
                 phi_r = self.pops[0].phi
+            sig = lambda x: 0 if x < .3 else x
+            
+            if t > 0 and t < 150:
+                self.r_ext[2] = lambda t: 0
+            else:
+                self.r_ext[2] = lambda t: 1
+            
             r1, r2, r3 = states[0][:,t], states[1][:,t], states[2][:,t]
             s1, s2, s3 = deps[0][:,t], deps[1][:,t], deps[2][:,t]
-            r_sum1 = phi_r(self.J[0][0].W.dot(r1) + self.J[0][1].W.dot(r2) + self.J[0][2].W.dot(r3) + self.r_ext[0](t))
-            r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[1][0].W.dot(r1) + self.J[1][2].W.dot(r3*s3)*175 + self.r_ext[1](t))
-            r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[2][0].W.dot(r1) + self.J[2][1].W.dot(r2*s2)*175 + self.r_ext[2](t))
+            r_sum1 = phi_r(self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.J[2][0].W.dot(r3) + self.r_ext[0](t))
+            r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.J[2][1].W.dot(np.vectorize(sig)(r3)*s3)*.1 + self.r_ext[1](t))
+            r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.J[1][2].W.dot(np.vectorize(sig)(r2)*s2)*.1 + self.r_ext[2](t))
+
             
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau
             dr3 = (-r3 + r_sum3) / self.tau 
             
             ds1 = np.zeros(len(r_sum1))
-            ds2 = (-(s2-1)*(1-r_sum2) - (s2-beta)*r_sum2) / (20*self.tau)
-            ds3 = (-(s3-1)*(1-r_sum3) - (s3-beta)*r_sum3) / (20*self.tau)
             
-            if t == 610:
-                print(self.J[1][2].W.dot(r3*s3))
+#             sig = lambda x:x
+            ds2 = (-(s2-1)*(1-r_sum2) - (s2-beta)*r_sum2) / (10*self.tau)
+            ds3 = (-(s3-1)*(1-r_sum3) - (s3-beta)*r_sum3) / (10*self.tau)
+            
 
-#             if t%10 == 0:
-#                 print(t, np.average(s3))
-# #                 print(np.average(r2*s2), np.average(r3*s3))
-            if return_field:
-                return dr, r_sum
-            else:
-                return np.array([dr1, dr2, dr3]), np.array([ds1, ds2, ds3])
+            return np.array([dr1, dr2, dr3]), np.array([ds1, ds2, ds3])
 
         return f
     
