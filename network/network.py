@@ -114,20 +114,20 @@ class RateNetwork(Network):
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             # Update firing rate 
-#             dr, da = fun(i, states, adaptations)
-            dr, ds= fun(i, states, deps, 0.01)
+            dr, da = fun(i, states, adaptations)
+#             dr, ds= fun(i, states, deps, 0.01)
                 
             for k in range(self.Np):
                 GN = np.random.normal(size=self.pops[k].size) * noise[k]
                 states[k][:,i+1] = states[k][:,i] + dt * dr[k] + GN
-                deps[k][:,i+1] = deps[k][:,i] + dt * ds[k]
-#                 adaptations[k][:,i+1] = adaptations[k][:,i] + dt * da[k]
+#                 deps[k][:,i+1] = deps[k][:,i] + dt * ds[k]
+                adaptations[k][:,i+1] = adaptations[k][:,i] + dt * da[k]
 
             # Update eligibility trace
             if i - delta_t > 0 and etrace:
                 if print_output:
-                    pre = determine_action(state1[:,i-delta_t], patterns_ctx, thres=detection_thres)
-                    post = determine_action(state2[:,i+1], patterns_bg, thres=detection_thres)
+                    pre = determine_action(states[0][:,i-delta_t], patterns[0], thres=detection_thres)
+                    post = determine_action(states[1][:,i+1], patterns[1], thres=detection_thres)
                     
                     if eprev == [pre, post]:
                         ecnt += 1
@@ -136,7 +136,7 @@ class RateNetwork(Network):
                         ecnt = 0
                         eprev = [pre, post]
 
-                self.J[0][1].update_etrace(state2[:,i-delta_t], state1[:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                self.J[0][1].update_etrace(states[1][:,i-delta_t], states[0][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
             
             # detect action transition
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
@@ -153,7 +153,7 @@ class RateNetwork(Network):
                 if print_output:
                     print('Mouse received reward')
                 if etrace:
-                    self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=1)
+                    self.J[1][0].W = self.reward_etrace(W=self.J[1][0].W, E=self.J[1][0].E, lamb=lamb, R=1)
                 reward = False
         for k in range(self.Np):
             self.pops[k].state = np.hstack([self.pops[k].state, states[k][:self.pops[k].size,:]])
@@ -344,13 +344,13 @@ class RateNetwork(Network):
             
 
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*.3)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*.9)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.r_ext[2](t))
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
             dr3 = (-r3 + r_sum3) / self.tau 
-            da1 = (-a1 + r1) / (30*self.tau)
+            da1 = (-a1 + r1) / (20*self.tau)
             da2 = np.zeros(len(r_sum2))
             da3 = np.zeros(len(r_sum3))
 
