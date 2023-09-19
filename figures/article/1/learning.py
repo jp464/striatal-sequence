@@ -15,66 +15,42 @@ logging.basicConfig(level=logging.INFO)
 
 ### Input 
 filename = sys.argv[1]
+print(filename)
 
-### Set up network
+# Load parameters
+params = np.load("./params.npz", allow_pickle=True) 
+N, sequences, patterns, cp, cw, A, plasticity_rule = params['N'], params['sequences'], params['patterns'], params['cp'], params['cw'], params['A'], params['plasticity_rule']
+
 phi = ErrorFunction(mu=0.22, sigma=0.1).phi
 plasticity = ThresholdPlasticityRule(x_f=0.5, q_f=0.8)
 
 # populations
-ctx = Population(N=1000, tau=1e-2, phi=phi, name='ctx')
-d1 = Population(N=1000, tau=1e-2, phi=phi, name='d1')
-d2 = Population(N=1000, tau=1e-2, phi=phi, name='d2')
-pops = np.array([ctx, d1])
+ctx = Population(N=N[0], tau=1e-2, phi=phi, name='ctx')
+d1 = Population(N=N[1], tau=1e-2, phi=phi, name='d1')
+d2 = Population(N=N[2], tau=1e-2, phi=phi, name='d2')
 
-# patterns 
-S, P = 1, 3
-sequences_ctx = [GaussianSequence(P,ctx.size, seed=114) for i in range(S)]
-patterns_ctx = np.stack([s.inputs for s in sequences_ctx])
-sequences_d1 = [GaussianSequence(P,d1.size, seed=29) for i in range(S)]
-patterns_d1 = np.stack([s.inputs for s in sequences_d1])
-patterns = [patterns_ctx, patterns_d1]
-
-# connectivity probabilities
-cp = np.array([[0.05,  0.05], 
-               [0.05, 0.05]])
-cw = np.array([[0, 0],
-               [0, 0]])
-A = np.array([[[[5,0,0],
-               [0,5,0],
-               [0,0,5]],
-              [[1,0,0],
-               [0,1,0],
-               [0,0,1]]],
-              [[[0,0,0],
-               [0,0,0],
-               [0.06,0,0]],
-              [[5.5,0,0],
-               [0,5,0],
-               [0,0,5]]]])
-
-plasticity_rule = np.array([[0, 0],
-                          [0, 0]])
-
-J = set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity)
-
-network = RateNetwork(pops, J, formulation=4)
+# Set up rate network
+J = set_connectivity([ctx, d1, d2], cp, cw, A, plasticity_rule, patterns, plasticity)
+network = RateNetwork([ctx, d1, d2], J, formulation=4, disable_pbar=True)
 
 ### Simiulation
-init_input_ctx = np.random.RandomState().normal(0,1,size=patterns_ctx[0][0].shape)
-init_input_d1 = np.random.RandomState().normal(0,1,size=patterns_d1[0][0].shape)
+init_inputs = [np.zeros(ctx.size),
+               np.zeros(d1.size),
+               np.zeros(d2.size)]
+input_patterns = [p[0] for p in patterns]
+
 T=500 #ms
 mouse = ReachingTask()
-network.simulate_learning(mouse, T, init_input_ctx, init_input_d1, 
-                          patterns_ctx[0], patterns_d1[0], plasticity, 
-                          delta_t=500, eta=0.0005, tau_e=1600, lamb=0.5, 
-                          noise1=.13, noise2=.13, etrace=True, print_output=False)
+network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
+                          delta_t=100, eta=0.001, tau_e=500, lamb=0.8, 
+                          noise=[.13, 0.13, 0.13], etrace=True, hyper=False,
+                          r_ext=[lambda t:0, lambda t:1, lambda t:1], print_output=False)
 
 ### Save
-overlaps_ctx = sequences_ctx[0].overlaps(network.pops[0])
-overlaps_d1 = sequences_d1[0].overlaps(network.pops[1])
-correlations_ctx = sequences_ctx[0].overlaps(network.pops[0], correlation=True)
-correlations_d1 = sequences_d1[0].overlaps(network.pops[1], correlation=True)
+overlaps_ctx = sequences[0][0].overlaps(network.pops[0])
+overlaps_d1 = sequences[1][0].overlaps(network.pops[1])
+overlaps_d2 = sequences[2][0].overlaps(network.pops[2])
 np.savez('/work/jp464/striatum-sequence/' + filename + '.npz', 
-         overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1, 
-         correlations_ctx=correlations_ctx, correlations_d1=correlations_d1, 
-         state_ctx=network.pops[0].state, state_d1=network.pops[1].state)
+         overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1,
+         overlaps_d2=overlaps_d2, state_ctx=network.pops[0].state,
+         state_d1=network.pops[1].state, state_d2=network.pops[2].state)
