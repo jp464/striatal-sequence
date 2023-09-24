@@ -12,7 +12,7 @@ class Learning(object):
         self.transitions = None 
     
     def get_action(self, s):
-        return self.actions[s]
+        return self.actions[int(s)]
     
 class ReachingTask(Learning):
     def __init__(self):
@@ -23,7 +23,7 @@ class ReachingTask(Learning):
         self.fullness = 0
     
     # Detect whether mouse has acquired water
-    def water(self, a0, a1, water_left=300):
+    def water(self, a0, a1, water_left=200):
         if a0 == 'aim' and a1 == 'reach':
             self.water_left = water_left
             self.w = 1
@@ -46,7 +46,14 @@ class ReachingTask(Learning):
             self.water_left -= 1
         else:
             self.reward = 0
-    
+            
+    # Environmental variabe
+    def env(C, patterns):
+        ret = np.zeros(len(patterns[0]))
+        for i,v in enumerate(C):
+            ret += v * patterns[i]
+        return ret
+
     # Compute the reward rate over sessiosn 
     def learning_performance(self, correlations, interval):
         correlations = np.transpose(correlations)

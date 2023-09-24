@@ -105,8 +105,8 @@ class RateNetwork(Network):
             adaptations[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
             prev_actions[i] = determine_action(states[i][:,0], patterns[i], thres=detection_thres)
             prev_idxs[i] = 0
-            mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=np.int8)
-            mouse.behaviors[i][prev_idxs[i]] = prev_actions[i]
+            mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=object)
+            mouse.behaviors[i][prev_idxs[i]] = [prev_actions[i],i]
     
         # eligibility trace parameters  
         eprev = None
@@ -142,13 +142,13 @@ class RateNetwork(Network):
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
             
             # Detect water 
-            if transitions[1]: # D1 reflects motor activity
+            if transitions[0]: # D1 reflects motor activity
                 if print_output:
-                    print(mouse.get_action(mouse.behaviors[1][prev_idxs[1]-1]) + "-->" + mouse.get_action(mouse.behaviors[1][prev_idxs[1]]))
-                mouse.water(mouse.get_action(mouse.behaviors[1][prev_idxs[1]-1]),
-                            mouse.get_action(mouse.behaviors[1][prev_idxs[1]]))             
+                    print(mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]) + "-->" + mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))
+                    mouse.water(mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]),
+                                mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))    
             # Detect reward
-            mouse.compute_reward(mouse.get_action(mouse.behaviors[1][prev_idxs[1]]))
+            mouse.compute_reward(mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))
             if mouse.reward:
                 if print_output:
                     print('Mouse received reward')
@@ -344,7 +344,7 @@ class RateNetwork(Network):
             
 
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*.9)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*1.2)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.r_ext[2](t))
             dr1 = (-r1 + r_sum1) / self.tau

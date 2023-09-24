@@ -1,29 +1,7 @@
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from ctx to d2
-INFO:connectivity:Building connections from ctx to d2
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to d1
-INFO:connectivity:Building connections from d1 to d1
-INFO:connectivity:Building connections from d1 to d2
-INFO:connectivity:Building connections from d1 to d2
-INFO:connectivity:Building connections from d2 to ctx
-INFO:connectivity:Building connections from d2 to ctx
-INFO:connectivity:Building connections from d2 to d1
-INFO:connectivity:Building connections from d2 to d1
-INFO:connectivity:Building connections from d2 to d2
-INFO:connectivity:Building connections from d2 to d2
-INFO:network:Integrating network dynamics
-INFO:network:Integrating network dynamics
 Traceback (most recent call last):
-  File "learning.py", line 44, in <module>
-    network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
-  File "/hpc/home/jp464/striatal-sequence/figures/article/1/../../../network/network.py", line 148, in simulate_learning
-    mouse.water(mouse.get_action(mouse.behaviors[1][prev_idxs[1]-1]),
-  File "/hpc/home/jp464/striatal-sequence/figures/article/1/../../../network/learning.py", line 15, in get_action
-    return self.actions[s]
-IndexError: list index out of range
-srun: error: dcc-core-09: task 0: Exited with exit code 1
+  File "learning-script.py", line 22, in <module>
+    N, sequences, patterns, cp, cw, A, plasticity_rule = params['N'], params['sequences'], params['patterns'], params['cp'], params['cw'], params['A'], params['plasticity_rule']
+  File "/hpc/group/brunellab/jp464/miniconda3/envs/striatum/lib/python3.8/site-packages/numpy/lib/npyio.py", line 260, in __getitem__
+    raise KeyError("%s is not a file in the archive" % key)
+KeyError: 'plasticity_rule is not a file in the archive'
+srun: error: dcc-core-16: task 0: Exited with exit code 1

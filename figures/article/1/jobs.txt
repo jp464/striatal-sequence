@@ -1,4 +1,4 @@
-python learning.py learning-400-0005-1600-5-i0
-python learning.py learning-400-0005-1600-5-i1
-python learning.py learning-400-0005-1600-5-i2
-python learning.py learning-400-0005-1600-5-i3
+python learning-script.py learning-400-0001-1600-5-i0 .0001
+python learning-script.py learning-400-0002-1600-5-i0 .0002
+python learning-script.py learning-400-0003-1600-5-i0 .0003
+python learning-script.py learning-400-0004-1600-5-i0 .0004

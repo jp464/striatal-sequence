@@ -10,36 +10,43 @@ from helpers import adder
 
 logger = logging.getLogger(__name__)
 
-
+def cmatrix(size, val, type):
+    M = np.zeros(size)
+    
+    if type == 1:
+        M = np.zeros(size)
+        for i in range(size[0]):
+            for j in range(size[1]):
+                if i == j:
+                    M[i][j] = val
+    if type == 2:
+        M[-1][0] = val
+        for i in range(size[0]):
+            for j in range(size[1]):
+                if i+1 == j:
+                    M[i][j] = val
+    return M        
 
 # sets connectivity for multi-network model
-def set_connectivity(pops, cp, cw, A, plasticity_rule, patterns, plasticity):
+def set_connectivity(pops, cp, cw, A, patterns, plasticity):
     Jmat = np.array([])
     for pop1 in range(len(pops)):
         rowblock = np.array([])
         for pop2 in range(len(pops)):
             J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
                                   p=cp[pop1][pop2])
-            rule = plasticity_rule[pop1][pop2]
             sign = cw[pop1][pop2]
             
             for k in range(len(patterns[0])):
                 # store attractors or sequences 
-                if rule == 0 or rule == 1:
-                    Atemp = A[pop1][pop2]
-                    for i in range(Atemp.shape[0]):
-                        for j in range(Atemp.shape[1]):
-                            if Atemp[i][j] == 0: continue
-                            synapse = LinearSynapse(J.K, Atemp[i][j])
-                            J.update_sequences(patterns[pop1][k][i],
-                                               patterns[pop2][k][j], synapse.h_EE,
-                                               plasticity.f, plasticity.g)
-                            
-                # store random connectivity
-                elif rule == 2:
-                    synapse = LinearSynapse(J.K, 7)
-#                     J.set_random(0, 1, synapse.h_EE)
-                    J.set_all(-5)
+                Atemp = A[pop1][pop2]
+                for i in range(Atemp.shape[0]):
+                    for j in range(Atemp.shape[1]):
+                        if Atemp[i][j] == 0: continue
+                        synapse = LinearSynapse(J.K, Atemp[i][j])
+                        J.update_sequences(patterns[pop1][k][i],
+                                           patterns[pop2][k][j], synapse.h_EE,
+                                           plasticity.f, plasticity.g)
 
                 # sign constraint
                 if sign == 1:
