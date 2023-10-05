@@ -1,4 +1,4 @@
-python learning-script.py learning-400-0001-1600-5-i0 .0001
-python learning-script.py learning-400-0002-1600-5-i0 .0002
-python learning-script.py learning-400-0003-1600-5-i0 .0003
-python learning-script.py learning-400-0004-1600-5-i0 .0004
+python learning-script.py learning-env 350 .01 1150 0.5
+python learning-script.py learning-env 350 .001 1150 0.5
+python learning-script.py learning-env 350 .002 1150 0.5
+python learning-script.py learning-env 350 .005 1150 0.5

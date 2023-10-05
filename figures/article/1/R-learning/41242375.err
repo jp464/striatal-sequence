@@ -1,0 +1,236 @@
+INFO:connectivity:Building connections from ctx to ctx
+INFO:connectivity:Building connections from ctx to d1
+INFO:connectivity:Building connections from ctx to d2
+INFO:connectivity:Building connections from d1 to ctx
+INFO:connectivity:Building connections from d1 to d1
+INFO:connectivity:Building connections from d1 to d2
+INFO:connectivity:Building connections from d2 to ctx
+INFO:connectivity:Building connections from d2 to d1
+INFO:connectivity:Building connections from d2 to d2
+INFO:network:Integrating network dynamics
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:48340]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:35604]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:45884]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:55986]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:39914]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:44266]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:51830]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:33010]: Connection reset by peer
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:56322]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:43930]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:46188]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:59716]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:59744]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:52692]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:52206]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:48150]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:48156]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:39172]: Connection reset by peer
+srun: error: unpack_header: protocol_version 768 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:58442] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:58442]: Message receive failure
+srun: error: unpack_header: protocol_version 768 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:55792] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:55792]: Message receive failure
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_read_from_fd: io_init_msg_unpack failed: rc=-1
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:44424]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:56156]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:48402]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:48418]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:56682]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:56690]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:38102]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:38110]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:50298]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:50302]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:59134]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:52326]: Insane message length
+srun: error: unpackstr_xmalloc: Buffer to be unpacked is too large (1700881509 > 1073741824)
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:40310] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:40310]: Message receive failure
+srun: error: unpackstr_xmalloc: Buffer to be unpacked is too large (1700881509 > 1073741824)
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:53514] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:53514]: Message receive failure
+srun: error: unpackmem_xmalloc: Buffer to be unpacked is too large (1684369920 > 1073741824)
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_read_from_fd: io_init_msg_unpack failed: rc=-1
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:59982]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:49420]: Connection reset by peer
+srun: error: unpack_header: protocol_version 515 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:41080] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:41080]: Message receive failure
+srun: error: unpack_header: protocol_version 515 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:58038] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:58038]: Message receive failure
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_read_from_fd: io_init_msg_unpack failed: rc=-1
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:59758]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:59766]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:58806]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:58822]: Connection reset by peer
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:58896]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:36604]: Connection reset by peer
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:46902]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:33608]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:57718]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:38984]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:32816]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:37426]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:55922]: Connection reset by peer
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:36506]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:43222]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:46278]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:33902]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:42794]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:57740]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:54336]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:57746]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:53592]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:54348]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:47020]: Connection reset by peer
+srun: error: unpack_header: protocol_version 768 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:36286] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:36286]: Message receive failure
+srun: error: unpack_header: protocol_version 768 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:45242] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:45242]: Message receive failure
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_read_from_fd: io_init_msg_unpack failed: rc=-1
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:58740]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:49074]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:43054]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:43070]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:53952]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:53958]: Connection reset by peer
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:34888]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:34900]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:44952]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:44956]: Insane message length
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:49242]: Insane message length
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:34708]: Insane message length
+srun: error: unpackstr_xmalloc: Buffer to be unpacked is too large (1700881509 > 1073741824)
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:41332] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:41332]: Message receive failure
+srun: error: unpackstr_xmalloc: Buffer to be unpacked is too large (1700881509 > 1073741824)
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:33882] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:33882]: Message receive failure
+srun: error: unpackmem_xmalloc: Buffer to be unpacked is too large (1684369920 > 1073741824)
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_read_from_fd: io_init_msg_unpack failed: rc=-1
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:35444]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:42874]: Connection reset by peer
+srun: error: unpack_header: protocol_version 515 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:46156] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:46156]: Message receive failure
+srun: error: unpack_header: protocol_version 515 not supported
+srun: error: unpacking header
+srun: error: destroy_forward: no init
+srun: error: slurm_unpack_received_msg: [[itso-scanner-hpc-102.oit.duke.edu]:33540] Message receive failure
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:33540]: Message receive failure
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_read_from_fd: io_init_msg_unpack failed: rc=-1
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:60284]: Connection reset by peer
+srun: error: eio_message_socket_accept: slurm_receive_msg[10.138.83.37:39286]: Connection reset by peer
+srun: error: io_init_msg_read_from_fd: reading slurm_io_init_msg failed: Connection reset by peer
+srun: error: failed reading io init message
+INFO:sequences:Computing overlaps
+  0%|          | 0/4 [00:00<?, ?it/s] 25%|██▌       | 1/4 [00:00<00:00,  3.03it/s] 50%|█████     | 2/4 [00:00<00:00,  3.67it/s] 75%|███████▌  | 3/4 [00:00<00:00,  3.93it/s]100%|██████████| 4/4 [00:01<00:00,  4.08it/s]100%|██████████| 4/4 [00:01<00:00,  3.90it/s]
+INFO:sequences:Computing overlaps
+  0%|          | 0/4 [00:00<?, ?it/s] 25%|██▌       | 1/4 [00:00<00:00,  3.98it/s] 50%|█████     | 2/4 [00:00<00:00,  4.14it/s] 75%|███████▌  | 3/4 [00:00<00:00,  4.20it/s]100%|██████████| 4/4 [00:00<00:00,  4.24it/s]100%|██████████| 4/4 [00:00<00:00,  4.20it/s]
+INFO:sequences:Computing overlaps
+  0%|          | 0/4 [00:00<?, ?it/s] 25%|██▌       | 1/4 [00:00<00:00,  4.03it/s] 50%|█████     | 2/4 [00:00<00:00,  4.20it/s] 75%|███████▌  | 3/4 [00:00<00:00,  4.24it/s]100%|██████████| 4/4 [00:00<00:00,  4.27it/s]100%|██████████| 4/4 [00:00<00:00,  4.23it/s]

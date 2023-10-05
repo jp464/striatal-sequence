@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "learning-script.py", line 22, in <module>
-    N, sequences, patterns, cp, cw, A, plasticity_rule = params['N'], params['sequences'], params['patterns'], params['cp'], params['cw'], params['A'], params['plasticity_rule']
-  File "/hpc/group/brunellab/jp464/miniconda3/envs/striatum/lib/python3.8/site-packages/numpy/lib/npyio.py", line 260, in __getitem__
-    raise KeyError("%s is not a file in the archive" % key)
-KeyError: 'plasticity_rule is not a file in the archive'
-srun: error: dcc-core-16: task 0: Exited with exit code 1

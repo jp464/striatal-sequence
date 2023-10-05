@@ -1,7 +1,0 @@
-python learning.py learning-100-0001-500-5-i0
-python learning.py learning-100-0001-500-5-i1
-python learning.py learning-100-0001-500-5-i2
-python learning.py learning-100-0001-500-5-i3
-
-
-

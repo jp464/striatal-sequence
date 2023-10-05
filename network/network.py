@@ -80,7 +80,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, env=[0,0,0,0], etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -90,11 +90,12 @@ class RateNetwork(Network):
         
         self.r_ext = r_ext.copy()
         
+        
         states = np.zeros(self.Np, dtype=object)
         deps = np.zeros(self.Np, dtype=object)
         adaptations = np.zeros(self.Np, dtype=object)
         prev_actions = np.zeros(self.Np, dtype=np.int8)
-        prev_idxs = np.zeros(self.Np, dtype=np.int8)
+        prev_idxs = np.zeros(self.Np, dtype=np.int32)
         mouse.behaviors = np.zeros(self.Np, dtype=object)
         
         # Initialization
@@ -103,7 +104,7 @@ class RateNetwork(Network):
             states[i][:,0] = r[i]
             deps[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
             adaptations[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
-            prev_actions[i] = determine_action(states[i][:,0], patterns[i], thres=detection_thres)
+            prev_actions[i] = -1
             prev_idxs[i] = 0
             mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=object)
             mouse.behaviors[i][prev_idxs[i]] = [prev_actions[i],i]
@@ -113,6 +114,12 @@ class RateNetwork(Network):
         ecnt = 0
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
+            if mouse.wall == 1:
+                self.r_ext[0] = mouse.env(np.array([0, 0.05, 0.07, 0]), patterns[0])
+#             elif mouse.whand == 1:
+#                 self.r_ext[0] = mouse.env(np.array([0, 0, 0.08, 0]), patterns[0])
+            else:
+                self.r_ext[0] = mouse.env(np.array([0.07, 0, 0, 0.07]), patterns[0])
             # Update firing rate 
             dr, da = fun(i, states, adaptations)
 #             dr, ds= fun(i, states, deps, 0.01)
@@ -141,13 +148,15 @@ class RateNetwork(Network):
             # detect action transition
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
             
-            # Detect water 
+            # Detect water and wall
             if transitions[0]: # D1 reflects motor activity
+                a0, a1 = mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]), mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0])
                 if print_output:
-                    print(mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]) + "-->" + mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))
-                    mouse.water(mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]),
-                                mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))    
-            # Detect reward
+                    print(a0 + "-->" + a1)
+                mouse.water(a0, a1)    
+            mouse.detect_wall(mouse.get_action(determine_action(states[0][:,i-5], patterns[0], thres=detection_thres)),
+                              mouse.get_action(determine_action(states[0][:,i], patterns[0], thres=detection_thres)))
+        # Detect reward
             mouse.compute_reward(mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))
             if mouse.reward:
                 if print_output:
@@ -342,15 +351,13 @@ class RateNetwork(Network):
             r1, r2, r3 = states[0][:,t], states[1][:,t], states[2][:,t]
             a1, a2, a3 = adaptations[0][:,t], adaptations[1][:,t], adaptations[2][:,t]
             
-
-            
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*1.2)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*0.5)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.r_ext[2](t))
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
             dr3 = (-r3 + r_sum3) / self.tau 
-            da1 = (-a1 + r1) / (20*self.tau)
+            da1 = (-a1 + r1) / (50*self.tau)
             da2 = np.zeros(len(r_sum2))
             da3 = np.zeros(len(r_sum3))
 

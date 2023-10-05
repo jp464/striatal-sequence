@@ -14,13 +14,12 @@ import seaborn as sns
 logging.basicConfig(level=logging.INFO)
 
 ### Input 
-filename, delta_t, eta, tau_e, lamb = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
-filename = filename + '-' + delta_t + '-' + eta + '-' + tau_e + '-' + lamb
-delta_t, eta, tau_e, lamb = int(delta_t), float(eta), float(tau_e), float(lamb)
+filename = sys.argv[1]
+print(filename)
 
 # Load parameters
 params = np.load("./params.npz", allow_pickle=True) 
-N, sequences, patterns, cp, cw, A = params['N'], params['sequences'], params['patterns'], params['cp'], params['cw'], params['A']
+N, sequences, patterns, cp, cw, A, plasticity_rule = params['N'], params['sequences'], params['patterns'], params['cp'], params['cw'], params['A'], params['plasticity_rule']
 
 phi = ErrorFunction(mu=0.22, sigma=0.1).phi
 plasticity = ThresholdPlasticityRule(x_f=0.5, q_f=0.8)
@@ -31,7 +30,7 @@ d1 = Population(N=N[1], tau=1e-2, phi=phi, name='d1')
 d2 = Population(N=N[2], tau=1e-2, phi=phi, name='d2')
 
 # Set up rate network
-J = set_connectivity([ctx, d1, d2], cp, cw, A, patterns, plasticity)
+J = set_connectivity([ctx, d1, d2], cp, cw, A, plasticity_rule, patterns, plasticity)
 network = RateNetwork([ctx, d1, d2], J, formulation=4, disable_pbar=True)
 
 ### Simiulation
@@ -40,12 +39,12 @@ init_inputs = [np.zeros(ctx.size),
                np.zeros(d2.size)]
 input_patterns = [p[0] for p in patterns]
 
-T=1000 #ms
+T=500 #ms
 mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
-                          delta_t=delta_t, eta=eta, tau_e=tau_e, lamb=lamb, 
-                          noise=[0.13, 0.13, 0.13], env=[.067, .02, .065, .0005], etrace=True, hyper=False,
-                          r_ext=[lambda t:0, lambda t:.1, lambda t:.1], print_output=False)
+                          delta_t=450, eta=0.0005, tau_e=1450, lamb=0.5, 
+                          noifse=[0.13, 0.13, 0.13], etrace=True, hyper=False,
+                          r_ext=[lambda t:0, lambda t:1, lambda t:1], print_output=False)
 
 ### Save
 overlaps_ctx = sequences[0][0].overlaps(network.pops[0])
