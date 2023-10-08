@@ -80,7 +80,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, env=[0,0,0,0], etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, env=[0,0,0,0], a=0, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -121,7 +121,7 @@ class RateNetwork(Network):
             else:
                 self.r_ext[0] = mouse.env(np.array([0.07, 0, 0, 0.07]), patterns[0])
             # Update firing rate 
-            dr, da = fun(i, states, adaptations)
+            dr, da = fun(i, states, adaptations, a)
 #             dr, ds= fun(i, states, deps, 0.01)
                 
             for k in range(self.Np):
@@ -335,7 +335,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, pbar, t_max):
-        def f(t, states, adaptations, return_field=False):
+        def f(t, states, adaptations, a, return_field=False):
             """
             Rate formulation 4
             """
@@ -351,7 +351,7 @@ class RateNetwork(Network):
             r1, r2, r3 = states[0][:,t], states[1][:,t], states[2][:,t]
             a1, a2, a3 = adaptations[0][:,t], adaptations[1][:,t], adaptations[2][:,t]
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*0.5)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*a)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.r_ext[2](t))
             dr1 = (-r1 + r_sum1) / self.tau
