@@ -53,7 +53,7 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
                     J.W.data[J.W.data < 0] = 0
                 elif sign == -1:
                     print('')
-                    J.W.data[J.W.data < 0] -= 0.03
+                    J.W.data[J.W.data < 0] -= 0.02
                     J.W.data[J.W.data > 0] = 0
                     
             rowblock = np.append(rowblock, J)
