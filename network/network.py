@@ -80,7 +80,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, env=[0,0,0,0], a=0, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, env=0, a=0, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -115,11 +115,11 @@ class RateNetwork(Network):
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             if mouse.wall == 1:
-                self.r_ext[0] = mouse.env(np.array([0, 0.05, 0.07, 0]), patterns[0])
+                self.r_ext[0] = mouse.env(np.array([0, 0.01, 0.07, 0]), patterns[0], env)
 #             elif mouse.whand == 1:
 #                 self.r_ext[0] = mouse.env(np.array([0, 0, 0.08, 0]), patterns[0])
             else:
-                self.r_ext[0] = mouse.env(np.array([0.07, 0, 0, 0.07]), patterns[0])
+                self.r_ext[0] = mouse.env(np.array([0.07, 0, 0, 0.07]), patterns[0], env)
             # Update firing rate 
             dr, da = fun(i, states, adaptations, a)
 #             dr, ds= fun(i, states, deps, 0.01)
@@ -386,6 +386,7 @@ class RateNetwork(Network):
                 self.r_ext[2] = lambda t: 0
             else:
                 self.r_ext[2] = lambda t: 1
+                
             
             r1, r2, r3 = states[0][:,t], states[1][:,t], states[2][:,t]
             s1, s2, s3 = deps[0][:,t], deps[1][:,t], deps[2][:,t]

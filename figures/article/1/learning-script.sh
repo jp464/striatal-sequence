@@ -2,7 +2,7 @@
 #SBATCH --job-name=learning
 #SBATCH --output=learning.out
 #SBATCH --cpus-per-task=20
-#SBATCH --mem-per-cpu=10G
+#SBATCH --mem-per-cpu=15G
 #SBATCH --output=R-%x.%j.out
 #SBATCH --error=R-%x/%j.err
 #SBATCH --array=1-4
