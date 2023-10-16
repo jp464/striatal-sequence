@@ -1,4 +1,8 @@
-python learning-script.py learning-env 700 .01 2200 0.5
-python learning-script.py learning-env 700 .004 2200 0.5
-python learning-script.py learning-env 700 .002 2200 0.5
-python learning-script.py learning-env 700 .005 2200 0.5
+python learning-script.py learning-env 800 .01 2500 0.5
+python learning-script.py learning-env 800 .01 2500 0.8
+python learning-script.py learning-env 800 .01 2500 0.2
+python learning-script.py learning-env 800 .02 2500 0.5
+python learning-script.py learning-env 800 .02 2500 0.8
+python learning-script.py learning-env 800 .008 2500 0.8
+python learning-script.py learning-env 800 .008 2500 0
+python learning-script.py learning-env 800 .008 2500 0.2

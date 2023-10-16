@@ -12,6 +12,9 @@ def spike_to_rate(spikes, window_std=20):
         estimate[i,:] = y
     return estimate
 
+def overlap(state, patterns):
+    return [state.T.dot(p) / state.shape[0] for p in patterns]
+
 # Determines which action mouse is currently in 
 def determine_action(state, patterns, thres=0.3, correlations=False):
     if correlations:

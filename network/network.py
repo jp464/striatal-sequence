@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
 from connectivity import Connectivity
-from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize
+from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize, overlap
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
 from transfer_functions import erf, ErrorFunction
@@ -19,8 +19,6 @@ class Population(object):
         self.name = name
         self.size = N
         self.state = np.array([], ndmin=2).reshape(N,0)
-        self.depression = np.array([], ndmin=2).reshape(N,0)
-        self.adaptation = np.array([], ndmin=2).reshape(N,0)
         self.noise = np.array([], ndmin=2).reshape(N,0)
         self.field = np.array([], ndmin=2).reshape(N,0)
         self.tau = tau
@@ -80,7 +78,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, env=0, a=0, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, a_cf, e_bl, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -89,11 +87,8 @@ class RateNetwork(Network):
             fun = self._fun(tqdm(total=int(t/dt)-1),t)
         
         self.r_ext = r_ext.copy()
-        
-        
+                
         states = np.zeros(self.Np, dtype=object)
-        deps = np.zeros(self.Np, dtype=object)
-        adaptations = np.zeros(self.Np, dtype=object)
         prev_actions = np.zeros(self.Np, dtype=np.int8)
         prev_idxs = np.zeros(self.Np, dtype=np.int32)
         mouse.behaviors = np.zeros(self.Np, dtype=object)
@@ -102,8 +97,8 @@ class RateNetwork(Network):
         for i in range(self.Np):
             states[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
             states[i][:,0] = r[i]
-            deps[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
-            adaptations[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
+            a = 0
+            e = np.zeros(len(e_bl), dtype='float')
             prev_actions[i] = -1
             prev_idxs[i] = 0
             mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=object)
@@ -114,21 +109,16 @@ class RateNetwork(Network):
         ecnt = 0
         
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            if mouse.wall == 1:
-                self.r_ext[0] = mouse.env(np.array([0, 0.01, 0.07, 0]), patterns[0], env)
-#             elif mouse.whand == 1:
-#                 self.r_ext[0] = mouse.env(np.array([0, 0, 0.08, 0]), patterns[0])
-            else:
-                self.r_ext[0] = mouse.env(np.array([0.07, 0, 0, 0.07]), patterns[0], env)
             # Update firing rate 
-            dr, da = fun(i, states, adaptations, a)
-#             dr, ds= fun(i, states, deps, 0.01)
+            m_ctx = overlap(states[0][:,i], patterns[0])
+            dr, da, de = fun(i, states, a, a_cf, e, e_bl, m_ctx, patterns, mouse)
                 
             for k in range(self.Np):
                 GN = np.random.normal(size=self.pops[k].size) * noise[k]
                 states[k][:,i+1] = states[k][:,i] + dt * dr[k] + GN
-#                 deps[k][:,i+1] = deps[k][:,i] + dt * ds[k]
-                adaptations[k][:,i+1] = adaptations[k][:,i] + dt * da[k]
+            a += dt * da
+            for i in range(len(e)):
+                e[i] += dt * de[i]
 
             # Update eligibility trace
             if i - delta_t > 0 and etrace:
@@ -142,8 +132,7 @@ class RateNetwork(Network):
                         print(eprev, ecnt)
                         ecnt = 0
                         eprev = [pre, post]
-
-                self.J[0][1].update_etrace(states[1][:,i-delta_t], states[0][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
             
             # detect action transition
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
@@ -162,12 +151,11 @@ class RateNetwork(Network):
                 if print_output:
                     print('Mouse received reward')
                 if etrace:
-                    self.J[1][0].W = self.reward_etrace(W=self.J[1][0].W, E=self.J[1][0].E, lamb=lamb, R=1)
+                    print('hi')
+                    self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=1)
                 reward = False
         for k in range(self.Np):
             self.pops[k].state = np.hstack([self.pops[k].state, states[k][:self.pops[k].size,:]])
-            self.pops[k].adaptation = np.hstack([self.pops[k].adaptation, adaptations[k][:self.pops[k].size,:]])
-            self.pops[k].depression = np.hstack([self.pops[k].depression, deps[k][:self.pops[k].size,:]])
     
     def simulate_euler2(self, mouse, t, r1, r2, r3, y2, y3, patterns_ctx, patterns_d1, patterns_d2, detection_thres, noise1, noise2, noise3, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
@@ -335,7 +323,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, pbar, t_max):
-        def f(t, states, adaptations, a, return_field=False):
+        def f(t, states, a, a_cf, e, e_bl, overlaps, patterns, mouse, return_field=False):
             """
             Rate formulation 4
             """
@@ -348,20 +336,33 @@ class RateNetwork(Network):
                 raise NotImplemented
             else:
                 phi_r = self.pops[0].phi
-            r1, r2, r3 = states[0][:,t], states[1][:,t], states[2][:,t]
-            a1, a2, a3 = adaptations[0][:,t], adaptations[1][:,t], adaptations[2][:,t]
+            r1, r2 = states[0][:,t], states[1][:,t]
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - a1*a)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - 0 * a + mouse.env(e, patterns[0]) * 0.9)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
-            r_sum3 = phi_r(self.J[2][2].W.dot(r3) + self.J[0][2].W.dot(r1) + self.r_ext[2](t))
+            
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
-            dr3 = (-r3 + r_sum3) / self.tau 
-            da1 = (-a1 + r1) / (50*self.tau)
-            da2 = np.zeros(len(r_sum2))
-            da3 = np.zeros(len(r_sum3))
+            da = (-a + r1) / (100*self.tau)
+            de = np.zeros(len(e), dtype='float')
+            
+            cur_action = np.argmax(overlaps)
+            if cur_action == 0:
+                de[0] = (-e[0] + e_bl[0] - overlaps[0]) / (self.tau * 20)
+                de[1] = (-e[1] + e_bl[1] + overlaps[0]*.2) / (self.tau * 20)
+                de[2] = (-e[2] + e_bl[2] + overlaps[0]*.2) / (self.tau * 20)
+                de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20)
+            elif cur_action == 1 and mouse.w == 1:
+                de[0] = (-e[0] + e_bl[0] - overlaps[0]) / (self.tau * 20)
+                de[1] = (-e[1] + e_bl[1] - overlaps[1]) / (self.tau * 20)
+                de[2] = (-e[2] + e_bl[2] + overlaps[1]*1) / (self.tau * 20)
+                de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20) 
+            else:
+                for i in range(len(overlaps)):
+                    de[i] = (-e[i] + e_bl[i] - overlaps[i]) / (self.tau * 20)
+                
 
-            return [dr1, dr2, dr3], [da1, da2, da3]
+            return [dr1, dr2], da, de
 
         return f
 

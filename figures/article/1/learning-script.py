@@ -40,11 +40,11 @@ init_inputs = [np.zeros(ctx.size),
                np.zeros(d2.size)]
 input_patterns = [p[0] for p in patterns]
 
-T=1000 #ms
+T=100 #ms
 mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
-                          delta_t=750, eta=0.01, tau_e=2350, lamb=0.5, 
-                          noise=[0.3,0.13,0.13], env=0.4, a=0.6, etrace=True, hyper=False,
+                          delta_t=delta_t, eta=eta, tau_e=tau_e, lamb=lamb, 
+                          noise=[0.13,0.13,0.13], env=0.4, a=0.8, etrace=True, hyper=False,
                           r_ext=[lambda t:0, lambda t: .5, lambda t: 0], print_output=False)
 
 ### Save

@@ -19,7 +19,6 @@ class ReachingTask(Learning):
         super().__init__()
         self.actions = ['aim', 'reach', 'lick', 'scavenge', 'null']
         self.w = 0
-        self.whand = 0
         self.wall = 0
         self.water_left = -1
         self.fullness = 0
@@ -30,7 +29,6 @@ class ReachingTask(Learning):
         if a0 == 'aim' and a1 == 'reach':
             self.water_left = water_left
             self.w = 1
-            self.whand = 1
         elif a0 == 'reach' and a1 == 'lick':
             self.whand=0
             return 
@@ -41,9 +39,9 @@ class ReachingTask(Learning):
             self.whand = 0
     def detect_wall(self, a0, a1):
         if a1 == 'null': return
-        if a1 == 'aim' and self.action_dur > 200:
+        if a1 == 'aim' and self.action_dur > 500:
             self.wall = 1
-        elif a1 == 'lick' and self.action_dur > 200:
+        elif a1 == 'lick' and self.action_dur > 500:
             self.wall = 0
     
     # Detect whether mouse received reward
@@ -60,11 +58,11 @@ class ReachingTask(Learning):
             self.reward = 0
             
     # Environmental variabe
-    def env(self, C, patterns, env):
+    def env(self, C, patterns):
         ret = np.zeros(len(patterns[0]))
         for i,v in enumerate(C):
             ret = ret + v * patterns[i]
-        return lambda t: ret.astype('float64') * env
+        return ret.astype('float64')
 
     # Compute the reward rate over sessiosn 
     def learning_performance(self, correlations, interval):
