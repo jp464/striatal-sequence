@@ -117,8 +117,8 @@ class RateNetwork(Network):
                 GN = np.random.normal(size=self.pops[k].size) * noise[k]
                 states[k][:,i+1] = states[k][:,i] + dt * dr[k] + GN
             a += dt * da
-            for i in range(len(e)):
-                e[i] += dt * de[i]
+            for k in range(len(e)):
+                e[k] += dt * de[k]
 
             # Update eligibility trace
             if i - delta_t > 0 and etrace:
@@ -136,15 +136,14 @@ class RateNetwork(Network):
             
             # detect action transition
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
-            
+#             print(transitions)
             # Detect water and wall
-            if transitions[0]: # D1 reflects motor activity
+            if transitions[0]:
                 a0, a1 = mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]), mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0])
                 if print_output:
                     print(a0 + "-->" + a1)
+                print(a0, a1)
                 mouse.water(a0, a1)    
-            mouse.detect_wall(mouse.get_action(determine_action(states[0][:,i-5], patterns[0], thres=detection_thres)),
-                              mouse.get_action(determine_action(states[0][:,i], patterns[0], thres=detection_thres)))
         # Detect reward
             mouse.compute_reward(mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))
             if mouse.reward:
@@ -217,7 +216,7 @@ class RateNetwork(Network):
         state = sol.y
 
         # Save network state
-        self.exc.state = np.hstack([self.exc.state, state[:self.exc.size,:]])
+        self.pops[0].state = np.hstack([self.pops[0].state, state[:self.pops[0].size,:]])
         if self.inh: 
             self.inh.state = np.hstack([self.inh.state, state[-self.inh.size:,:]])
 
@@ -266,9 +265,9 @@ class RateNetwork(Network):
             if self.inh:
                 raise NotImplemented
             else:
-                phi_r = self.exc.phi
+                phi_r = self.pops[0].phi
             r_ext = self.r_ext
-            r_sum = phi_r(self.W.dot(r) + r_ext(t))
+            r_sum = phi_r(self.J[0].W.dot(r) + r_ext(t))
             dr = (-r + r_sum) / self.tau
             if return_field:
                 return dr, r_sum
@@ -355,8 +354,13 @@ class RateNetwork(Network):
             elif cur_action == 1 and mouse.w == 1:
                 de[0] = (-e[0] + e_bl[0] - overlaps[0]) / (self.tau * 20)
                 de[1] = (-e[1] + e_bl[1] - overlaps[1]) / (self.tau * 20)
-                de[2] = (-e[2] + e_bl[2] + overlaps[1]*1) / (self.tau * 20)
+                de[2] = (-e[2] + e_bl[2] + overlaps[1]*.2) / (self.tau * 20)
                 de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20) 
+#             elif cur_action == 3:
+#                 de[0] = (-e[0] + e_bl[0] + overlaps[3]*.01) / (self.tau * 20)
+#                 de[1] = (-e[1] + e_bl[1] - overlaps[1]) / (self.tau * 20)
+#                 de[2] = (-e[2] + e_bl[2] - overlaps[1]) / (self.tau * 20)
+#                 de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20)          
             else:
                 for i in range(len(overlaps)):
                     de[i] = (-e[i] + e_bl[i] - overlaps[i]) / (self.tau * 20)

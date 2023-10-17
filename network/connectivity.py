@@ -25,23 +25,6 @@ def cmatrix(size, val, z):
                 M[i][j] = AS
     return M  
 
-# def cmatrix(size, val, type):
-#     M = np.zeros(size)
-    
-#     if type == 1:
-#         M = np.zeros(size)
-#         for i in range(size[0]):
-#             for j in range(size[1]):
-#                 if i == j:
-#                     M[i][j] = val
-#     if type == 2:
-#         M[-1][0] = val
-#         for i in range(size[0]):
-#             for j in range(size[1]):
-#                 if i+1 == j:
-#                     M[i][j] = val
-#     return M   
-
 # sets connectivity for multi-network model
 def set_connectivity(pops, cp, cw, A, patterns, plasticity):
     Jmat = np.array([])

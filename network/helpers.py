@@ -30,15 +30,12 @@ def action_transition(t, mouse, prev_actions, prev_idxs, states, patterns, thres
     transitions = [False for i in range(len(states))]
     for i in range(len(states)):
         cur_action = determine_action(states[i][:,t], patterns[i], thres)
-        if i == 0 and prev_actions[i] == cur_action != -1:
-            mouse.action_dur += 1
         if prev_actions[i] != cur_action:
             if cur_action != -1:
                 prev_actions[i] = cur_action
                 prev_idxs[i] += 1 
                 transitions[i] = True 
                 mouse.behaviors[i][prev_idxs[i]] = [cur_action,t]
-                if i == 0: mouse.action_dur = 0
     return transitions
 
 # Hyperpolarizing current if at an action for thres ms 

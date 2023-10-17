@@ -5,7 +5,7 @@
 #SBATCH --mem-per-cpu=15G
 #SBATCH --output=R-%x.%j.out
 #SBATCH --error=R-%x/%j.err
-#SBATCH --array=1-8
+#SBATCH --array=1-4
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=$jp464@duke.edu  
 

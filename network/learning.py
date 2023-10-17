@@ -29,14 +29,11 @@ class ReachingTask(Learning):
         if a0 == 'aim' and a1 == 'reach':
             self.water_left = water_left
             self.w = 1
-        elif a0 == 'reach' and a1 == 'lick':
-            self.whand=0
             return 
         elif a0 == a1:
             return
         else:
             self.w = 0
-            self.whand = 0
     def detect_wall(self, a0, a1):
         if a1 == 'null': return
         if a1 == 'aim' and self.action_dur > 500:
