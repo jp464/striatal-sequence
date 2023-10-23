@@ -18,42 +18,34 @@ class ReachingTask(Learning):
     def __init__(self):
         super().__init__()
         self.actions = ['aim', 'reach', 'lick', 'scavenge', 'null']
-        self.w = 0
-        self.wall = 0
+        self.b = 0
         self.water_left = -1
-        self.fullness = 0
         self.action_dur = 0
+        self.reward = 0
     
     # Detect whether mouse has acquired water
-    def water(self, a0, a1, water_left=600):
-        if a0 == 'aim' and a1 == 'reach':
-            self.water_left = water_left
-            self.w = 1
-            return 
-        elif a0 == a1:
-            return
-        else:
-            self.w = 0
-    def detect_wall(self, a0, a1):
-        if a1 == 'null': return
-        if a1 == 'aim' and self.action_dur > 500:
-            self.wall = 1
-        elif a1 == 'lick' and self.action_dur > 500:
-            self.wall = 0
+    def barrier(self, a):
+        if a == 'aim':
+            self.b = 1
+        if a in ['reach', 'scavenge']:
+            self.b = 0
+            
+    def water(self, a0, a1, water_left=200):
+        if self.b == 1 and a1 == 'reach':
+            self.water_left = water_left 
+        elif a0 == 'reach' and a1 != 'lick':
+            self.water_left = -1
     
     # Detect whether mouse received reward
     def compute_reward(self, a, reward=1):
         if self.water_left == -1:
             self.reward = 0
         elif self.water_left == 0:
-            self.w = 0
             self.reward = reward
             self.water_left -= 1
-        elif a == 'lick' and self.w:
+        elif a == 'lick':
             self.water_left -= 1
-        else:
-            self.reward = 0
-            
+
     # Environmental variabe
     def env(self, C, patterns):
         ret = np.zeros(len(patterns[0]))

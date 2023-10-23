@@ -1,3 +1,0 @@
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
-slurmstepd: error: *** JOB 41513655 ON dcc-core-32 CANCELLED AT 2023-10-11T01:29:38 ***
-slurmstepd: error: *** STEP 41513655.0 ON dcc-core-32 CANCELLED AT 2023-10-11T01:29:38 ***

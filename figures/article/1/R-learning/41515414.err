@@ -1,16 +1,0 @@
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from ctx to d2
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to d1
-INFO:connectivity:Building connections from d1 to d2
-INFO:connectivity:Building connections from d2 to ctx
-INFO:connectivity:Building connections from d2 to d1
-INFO:connectivity:Building connections from d2 to d2
-INFO:network:Integrating network dynamics
-INFO:sequences:Computing overlaps
-  0%|          | 0/4 [00:00<?, ?it/s] 75%|███████▌  | 3/4 [00:00<00:00, 26.49it/s]100%|██████████| 4/4 [00:00<00:00, 30.85it/s]
-INFO:sequences:Computing overlaps
-  0%|          | 0/4 [00:00<?, ?it/s]100%|██████████| 4/4 [00:00<00:00, 59.73it/s]
-INFO:sequences:Computing overlaps
-  0%|          | 0/4 [00:00<?, ?it/s]100%|██████████| 4/4 [00:00<00:00, 67.08it/s]

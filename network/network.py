@@ -103,7 +103,6 @@ class RateNetwork(Network):
             prev_idxs[i] = 0
             mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=object)
             mouse.behaviors[i][prev_idxs[i]] = [prev_actions[i],i]
-    
         # eligibility trace parameters  
         eprev = None
         ecnt = 0
@@ -136,21 +135,25 @@ class RateNetwork(Network):
             
             # detect action transition
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
-#             print(transitions)
-            # Detect water and wall
+            mouse.action_dur += 1 
+#             print(mouse.action_dur)
+
+            # Detect barrier, water, reward
+            if prev_idxs[0] > 0: a0, a1 = mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]), mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0])
+            else: a0, a1 = None, None
             if transitions[0]:
-                a0, a1 = mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]), mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0])
                 if print_output:
                     print(a0 + "-->" + a1)
-                print(a0, a1)
-                mouse.water(a0, a1)    
-        # Detect reward
-            mouse.compute_reward(mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0]))
+                mouse.action_dur = 0
+            if a1 != None:
+                mouse.water(a0, a1)
+                mouse.barrier(a1)
+                mouse.compute_reward(a1)
+ 
             if mouse.reward:
                 if print_output:
                     print('Mouse received reward')
                 if etrace:
-                    print('hi')
                     self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=1)
                 reward = False
         for k in range(self.Np):
@@ -337,7 +340,7 @@ class RateNetwork(Network):
                 phi_r = self.pops[0].phi
             r1, r2 = states[0][:,t], states[1][:,t]
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - 0 * a + mouse.env(e, patterns[0]) * 0.9)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - 0 * a + mouse.env(e, patterns[0]))
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             
             dr1 = (-r1 + r_sum1) / self.tau
@@ -346,25 +349,21 @@ class RateNetwork(Network):
             de = np.zeros(len(e), dtype='float')
             
             cur_action = np.argmax(overlaps)
+            ctau = 25
             if cur_action == 0:
-                de[0] = (-e[0] + e_bl[0] - overlaps[0]) / (self.tau * 20)
-                de[1] = (-e[1] + e_bl[1] + overlaps[0]*.2) / (self.tau * 20)
-                de[2] = (-e[2] + e_bl[2] + overlaps[0]*.2) / (self.tau * 20)
-                de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20)
-            elif cur_action == 1 and mouse.w == 1:
-                de[0] = (-e[0] + e_bl[0] - overlaps[0]) / (self.tau * 20)
-                de[1] = (-e[1] + e_bl[1] - overlaps[1]) / (self.tau * 20)
-                de[2] = (-e[2] + e_bl[2] + overlaps[1]*.2) / (self.tau * 20)
-                de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20) 
-#             elif cur_action == 3:
-#                 de[0] = (-e[0] + e_bl[0] + overlaps[3]*.01) / (self.tau * 20)
-#                 de[1] = (-e[1] + e_bl[1] - overlaps[1]) / (self.tau * 20)
-#                 de[2] = (-e[2] + e_bl[2] - overlaps[1]) / (self.tau * 20)
-#                 de[3] = (-e[3] + e_bl[3] - overlaps[3]) / (self.tau * 20)          
+                de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
+                de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
+                de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
+                de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
+            elif cur_action == 1 and mouse.water_left > 0:
+                de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
+                de[1] = (-e[1] + e_bl[1] - overlaps[1]*.95) / (self.tau * ctau)
+                de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+                de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)      
             else:
                 for i in range(len(overlaps)):
-                    de[i] = (-e[i] + e_bl[i] - overlaps[i]) / (self.tau * 20)
-                
+                    de[i] = (-e[i] + e_bl[i] - overlaps[i]*.95) / (self.tau * ctau)
+
 
             return [dr1, dr2], da, de
 

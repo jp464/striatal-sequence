@@ -1,8 +1,0 @@
-python learning-script.py learning-env4 0 0 0 0 
-python learning-script.py learning-env5 0 0 0 0 
-python learning-script.py learning-env6 0 0 0 0 
-python learning-script.py learning-env7 0 0 0 0 
-
-
-
-
