@@ -3,7 +3,7 @@
 #SBATCH --output=learning.out
 #SBATCH --cpus-per-task=20
 #SBATCH --mem-per-cpu=15G
-#SBATCH --array=1-1859
+#SBATCH --array=1-12096
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=$jp464@duke.edu  
 

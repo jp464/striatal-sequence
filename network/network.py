@@ -78,7 +78,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, a_cf, e_bl, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, a_cf, e_bl, alpha, gamma, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -86,40 +86,48 @@ class RateNetwork(Network):
         else:
             fun = self._fun(tqdm(total=int(t/dt)-1),t)
         
-        self.r_ext = r_ext.copy()
-                
+        # ===================================================================================================================================
+        # INITIALIZATION
+        # ===================================================================================================================================
         states = np.zeros(self.Np, dtype=object)
         prev_actions = np.zeros(self.Np, dtype=np.int8)
         prev_idxs = np.zeros(self.Np, dtype=np.int32)
         mouse.behaviors = np.zeros(self.Np, dtype=object)
-        
-        # Initialization
         for i in range(self.Np):
             states[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
             states[i][:,0] = r[i]
-            a = 0
             e = np.zeros(len(e_bl), dtype='float')
             prev_actions[i] = -1
             prev_idxs[i] = 0
             mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=object)
             mouse.behaviors[i][prev_idxs[i]] = [prev_actions[i],i]
+        mouse.values = np.zeros(((len(mouse.actions)-1)*4, int((t-t0)/dt)))
+        value = np.zeros((len(mouse.actions)-1)*4)
+        mouse.rpes = np.zeros(((len(mouse.actions)-1)*4, int((t-t0)/dt)))
+        rpe = np.zeros((len(mouse.actions)-1)*4)
+        ws = np.zeros(int((t-t0)/dt))
+        bs = np.zeros(int((t-t0)/dt))
+        rs = np.zeros(int((t-t0)/dt))
+        
         # eligibility trace parameters  
         eprev = None
         ecnt = 0
-        
+
+        # ===================================================================================================================================
+        # SIMULATION
+        # ===================================================================================================================================
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
-            # Update firing rate 
+            ### Update firing rate 
             m_ctx = overlap(states[0][:,i], patterns[0])
-            dr, da, de = fun(i, states, a, a_cf, e, e_bl, m_ctx, patterns, mouse)
+            dr, de = fun(i, states, a_cf, e, e_bl, m_ctx, patterns, mouse)
                 
             for k in range(self.Np):
-                GN = np.random.normal(size=self.pops[k].size) * noise[k]
-                states[k][:,i+1] = states[k][:,i] + dt * dr[k] + GN
-            a += dt * da
+                white_noise = np.random.normal(size=self.pops[k].size) * noise[k]
+                states[k][:,i+1] = states[k][:,i] + dt * dr[k] + white_noise
             for k in range(len(e)):
                 e[k] += dt * de[k]
 
-            # Update eligibility trace
+            ### Update eligibility traces 
             if i - delta_t > 0 and etrace:
                 if print_output:
                     pre = determine_action(states[0][:,i-delta_t], patterns[0], thres=detection_thres)
@@ -133,31 +141,42 @@ class RateNetwork(Network):
                         eprev = [pre, post]
                 self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
             
-            # detect action transition
-            transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
+            ### Update mouse behavior 
             mouse.action_dur += 1 
-#             print(mouse.action_dur)
-
-            # Detect barrier, water, reward
+            transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
+            
             if prev_idxs[0] > 0: a0, a1 = mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]), mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0])
-            else: a0, a1 = None, None
+            else: continue
+            
+            mouse.water(a0, a1)
+            mouse.barrier(a1)
+            mouse.compute_reward(a1)
+                
             if transitions[0]:
                 if print_output:
                     print(a0 + "-->" + a1)
-                mouse.action_dur = 0
-            if a1 != None:
-                mouse.water(a0, a1)
-                mouse.barrier(a1)
-                mouse.compute_reward(a1)
- 
-            if mouse.reward:
-                if print_output:
-                    print('Mouse received reward')
-                if etrace:
-                    self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=1)
-                reward = False
+                bs[prev_idxs[0]] = mouse.b
+                ws[prev_idxs[0]] = mouse.w
+                rs[prev_idxs[0]] = mouse.r
+                
+                ### Compute RPE, V
+                if a1 != None:
+                    rpe, value = mouse.compute_error_value(prev_idxs[0], a0, a1, bs, ws, rs, value, rpe, gamma=gamma, alpha=alpha)
+                    
+            if mouse.r and print_output:
+                print('Mouse retrieved water')
+            
+            ### Update synaptic weight based on eligibility traces
+            if etrace and a1 != None:
+                self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
+
+        # ===================================================================================================================================
+        # SAVE 
+        # ===================================================================================================================================
         for k in range(self.Np):
             self.pops[k].state = np.hstack([self.pops[k].state, states[k][:self.pops[k].size,:]])
+        mouse.values = mouse.values[:,0:prev_idxs[0]]
+        mouse.rpes = mouse.rpes[:,0:prev_idxs[0]]
     
     def simulate_euler2(self, mouse, t, r1, r2, r3, y2, y3, patterns_ctx, patterns_d1, patterns_d2, detection_thres, noise1, noise2, noise3, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
@@ -175,10 +194,6 @@ class RateNetwork(Network):
         state2[:,0] = r2
         state3 = np.zeros((self.pops[2].size, int((t-t0)/dt)))
         state3[:,0] = r3
-        depression2 = np.zeros((self.pops[1].size, int((t-t0)/dt)))
-        depression2[:,0] = y2 
-        depression3 = np.zeros((self.pops[2].size, int((t-t0)/dt)))
-        depression3[:,0] = y3
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             dr1, dr2, dr3, dy2, dy3 = fun(i, state1[:,i], state2[:,i], state3[:,i], depression2[:,i], depression3[:,i], beta=.01)    
@@ -325,7 +340,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, pbar, t_max):
-        def f(t, states, a, a_cf, e, e_bl, overlaps, patterns, mouse, return_field=False):
+        def f(t, states, a_cf, e, e_bl, overlaps, patterns, mouse, return_field=False):
             """
             Rate formulation 4
             """
@@ -340,12 +355,11 @@ class RateNetwork(Network):
                 phi_r = self.pops[0].phi
             r1, r2 = states[0][:,t], states[1][:,t]
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) - 0 * a + mouse.env(e, patterns[0]))
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) + mouse.env(e, patterns[0]))
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
-            da = (-a + r1) / (100*self.tau)
             de = np.zeros(len(e), dtype='float')
             
             cur_action = np.argmax(overlaps)
@@ -355,17 +369,20 @@ class RateNetwork(Network):
                 de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
                 de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
                 de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
-            elif cur_action == 1 and mouse.water_left > 0:
+            elif cur_action == 1:
                 de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
-                de[1] = (-e[1] + e_bl[1] - overlaps[1]*.95) / (self.tau * ctau)
-                de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
-                de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)      
+                de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
+                if mouse.w == 1:
+                    de[1] = (-e[1] + e_bl[1] - overlaps[1]*.95) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+                else:
+                    de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] - overlaps[2]*.95) / (self.tau * ctau)                    
             else:
                 for i in range(len(overlaps)):
                     de[i] = (-e[i] + e_bl[i] - overlaps[i]*.95) / (self.tau * ctau)
 
-
-            return [dr1, dr2], da, de
+            return [dr1, dr2], de
 
         return f
 

@@ -13,9 +13,9 @@ import seaborn as sns
 logging.basicConfig(level=logging.INFO)
 
 ### Input 
-filename, delta_t, eta, tau_e, lamb = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
-filename = filename + '-' + delta_t + '-' + eta + '-' + tau_e + '-' + lamb
-delta_t, eta, tau_e, lamb = int(delta_t), float(eta), float(tau_e), float(lamb)
+filename, delta_t, eta, tau_e, lamb, alpha, gamma = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7]
+filename = filename + '-' + delta_t + '-' + eta + '-' + tau_e + '-' + lamb + '-' + alpha + '-' + gamma
+delta_t, eta, tau_e, lamb, gamma, alpha = int(delta_t), float(eta), float(tau_e), float(lamb), float(gamma), float(alpha)
 
 # Load parameters
 params = np.load("./ctx_str_params.npz", allow_pickle=True) 
@@ -36,12 +36,12 @@ init_inputs = [np.zeros(ctx.size),
                np.zeros(d1.size)]
 input_patterns = [p[0] for p in patterns]
 
-T=30 #ms
+T=200 #ms
 mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
                           delta_t=delta_t, eta=eta, tau_e=tau_e, lamb=lamb, 
-                          noise=[0.13,0.13,0.13], a_cf=0, e_bl = [0.05,0.035,0.04,0.07],
-                          etrace=True, 
+                          noise=[0.13,0.13,0.13], a_cf=0, e_bl = [0.055,0.022,0.04,0.07],
+                          alpha=alpha, gamma = gamma, etrace=False, 
                           hyper=False, r_ext=[lambda t:0, lambda t: .5], print_output=False)
 
 ### Save
@@ -50,4 +50,4 @@ overlaps_d1 = sequences[1][0].overlaps(network.pops[1])
 np.savez('/work/jp464/striatum-sequence/' + filename + '.npz', 
          overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1,
          state_ctx=network.pops[0].state, state_d1=network.pops[1].state,
-         behaviors=mouse.behaviors)
+         behaviors=mouse.behaviors, values=mouse.values, rpes=mouse.rpes)

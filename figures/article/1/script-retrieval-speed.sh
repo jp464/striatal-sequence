@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=learning
+#SBATCH --job-name=retrieval-speed
 #SBATCH --output=learning.out
 #SBATCH --cpus-per-task=20
 #SBATCH --mem-per-cpu=15G
 #SBATCH --output=R-%x.%j.out
 #SBATCH --error=R-%x/%j.err
-#SBATCH --array=1-5
+#SBATCH --array=1-12097
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=$jp464@duke.edu  
 
-srun $(head -n $SLURM_ARRAY_TASK_ID jobs-learning.txt | tail -n 1)
+srun $(head -n $SLURM_ARRAY_TASK_ID jobs-retrieval-speed.txt | tail -n 1)

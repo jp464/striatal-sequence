@@ -63,11 +63,12 @@ network = RateNetwork([ctx, d1], J, formulation=4, disable_pbar=False)
 init_inputs = [np.zeros(ctx.size),
                np.zeros(d1.size)]
 input_patterns = [p[0] for p in patterns]
-T=2 #ms
+T=8 #ms
 mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
                           delta_t=300, eta=0.05, tau_e=800, lamb=0.3, 
-                          noise=[0.13,0.13,0.13], a_cf=0, e_bl = [0.05,0.003,0.045,0.07], etrace=False, #[0.05,0.003,0.045,0.07]
+                          noise=[0.13,0.13,0.13], a_cf=0, e_bl = [0.05,0.003,0.045,0.07], 
+                          alpha=0, gamma=0, etrace=False, #[0.05,0.003,0.045,0.07]
                           hyper=False, r_ext=[lambda t:0, lambda t: .5], print_output=False)
 
 #=======================SAVE=======================

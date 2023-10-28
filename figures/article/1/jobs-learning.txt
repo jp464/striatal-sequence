@@ -1,11 +1,9 @@
-python learning-script.py learning-env 300 0.03 800 0
-python learning-script.py learning-env 300 0.03 800 0.9
-python learning-script.py learning-env 300 0.03 800 0.93
-python learning-script.py learning-env 300 0.03 800 0.96
-python learning-script.py learning-env 300 0.03 800 0.99
-python learning-script.py learning-env 300 0.05 800 0.93
-python learning-script.py learning-env 300 0.05 800 0.96
-python learning-script.py learning-env 300 0.05 800 0.99
+python code-learning.py learning-env 0 0 0 0 1 1
+python code-learning.py learning-env 0 0 0 0 0.8 1
+python code-learning.py learning-env 0 0 0 0 0.6 1
+python code-learning.py learning-env 0 0 0 0 0.4 1
+python code-learning.py learning-env 0 0 0 0 0.2 1
+
 
 
 

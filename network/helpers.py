@@ -30,8 +30,9 @@ def action_transition(t, mouse, prev_actions, prev_idxs, states, patterns, thres
     transitions = [False for i in range(len(states))]
     for i in range(len(states)):
         cur_action = determine_action(states[i][:,t], patterns[i], thres)
-        if prev_actions[i] != cur_action:
+        if mouse.behaviors[i][prev_idxs[i]][0] != cur_action:
             if cur_action != -1:
+                if i==0: mouse.action_dur = 0
                 prev_actions[i] = cur_action
                 prev_idxs[i] += 1 
                 transitions[i] = True 
