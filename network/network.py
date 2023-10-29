@@ -172,8 +172,7 @@ class RateNetwork(Network):
 #                 self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
             if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
 #             if mouse.action_dur == 200:
-                print(rpe[mouse.actions.index(a1) + int(8 * mouse.w + 4 * mouse.b)])
-                self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1) + int(8 * mouse.w + 4 * mouse.b)])
+                self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=1)
             
         # ===================================================================================================================================
         # SAVE 
@@ -272,7 +271,7 @@ class RateNetwork(Network):
         if self.inh: 
             self.inh.state = np.hstack([self.inh.state, state[-self.inh.size:,:]])
             if save_field:
-                self.inh.field = np.hstack([self.inh.field, field[:self.inh.size,:]])
+                self.inh.field = np.hstack([self.inh.fHelloield, field[:self.inh.size,:]])
 
     def add_noise(self, xi, pop):
         self.xi = xi
@@ -370,24 +369,26 @@ class RateNetwork(Network):
             if env:
                 cur_action = np.argmax(overlaps)
                 ctau = 25
+                
                 if cur_action == 0:
-                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.75) / (self.tau * ctau)
                     de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
                     de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.75) / (self.tau * ctau)
                 elif cur_action == 1:
-                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.75) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.75) / (self.tau * ctau)
                     if mouse.w == 1:
-                        de[1] = (-e[1] + e_bl[1] - overlaps[1]*.95) / (self.tau * ctau)
+                        de[1] = (-e[1] + e_bl[1] - overlaps[1]*.75) / (self.tau * ctau)
                         de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
                     else:
                         de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
-                        de[2] = (-e[2] + e_bl[2] - overlaps[2]*.95) / (self.tau * ctau)                    
+                        de[2] = (-e[2] + e_bl[2] - overlaps[2]*.75) / (self.tau * ctau)                    
                 else:
-                    for i in range(len(overlaps)):
-                        de[i] = (-e[i] + e_bl[i] - overlaps[i]*.95) / (self.tau * ctau)
-            
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.75) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] - overlaps[1]*.75) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] - overlaps[2]*.75) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.7) / (self.tau * ctau)            
             da = (-a + r1) / (25 * self.tau)
 
             return [dr1, dr2], de, da
