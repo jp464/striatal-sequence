@@ -84,7 +84,7 @@ class ReachingTask(Learning):
         
         prediction = value[idx0+s0]
         outcome = rs[i] + gamma*value[idx1+s1]
-        print(prediction, outcome)
+#         print(prediction, outcome)
         rpe[idx1+s1] = outcome - prediction 
         
         
@@ -102,14 +102,6 @@ class ReachingTask(Learning):
         
         return rpe, value
         
-    def compute_error(self, i, s0, s1, bs, ws, rs, rpe, gamma=1):
-        s0, s1 = self.actions.index(s0), self.actions.index(s1)
-        idx0, idx1 = int(8 * ws[i-1] + 4 * bs[i-1]), int(8 * ws[i] + 4 * bs[i])
-        print(rs[i], gamma*self.values[idx1+s1,i-1], self.values[idx0+s0,i-1])
-        rpe[idx1+s1] = rs[i] + gamma*self.values[idx1+s1,i-1] - self.values[idx0+s0,i-1]
-        self.rpes[:,i] = rpe
-        
-        return rpe
       
 class NetworkUpdateRule(object):
     def __init__(self):

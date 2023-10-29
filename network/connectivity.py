@@ -68,7 +68,7 @@ class Connectivity(object):
         self.disable_pbar = False
 
     def scale_all(self, value):
-        self.W *= value
+        self.W *= valuelearning-env-100-1-300-0.9-1-1
 
     @staticmethod
     def _store_sequences(ij, inputs_pre, inputs_post, f, g, disable_pbar=False):
@@ -197,8 +197,8 @@ class SparseConnectivity(Connectivity):
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
         data = np.asarray(data) / self.K
          
-        dE = -(self.E / tau_e) + (scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32).tocsr() * eta)
-        self.E += dE 
+        dE = -(self.E / tau_e) + (scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32) * eta)
+        self.E += dE.tocsr()
         
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")

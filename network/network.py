@@ -78,7 +78,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, a_cf, e_bl, alpha, gamma, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.23, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, e_bl, alpha, gamma, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.2, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -101,6 +101,8 @@ class RateNetwork(Network):
             prev_idxs[i] = 0
             mouse.behaviors[i] = np.empty(int((t-t0)/dt), dtype=object)
             mouse.behaviors[i][prev_idxs[i]] = [prev_actions[i],i]
+        adaptation = np.zeros((self.pops[0].size))    
+            
         mouse.values = np.zeros(((len(mouse.actions)-1)*4, int((t-t0)/dt)))
         value = np.zeros((len(mouse.actions)-1)*4)
         mouse.rpes = np.zeros(((len(mouse.actions)-1)*4, int((t-t0)/dt)))
@@ -119,13 +121,14 @@ class RateNetwork(Network):
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             ### Update firing rate 
             m_ctx = overlap(states[0][:,i], patterns[0])
-            dr, de = fun(i, states, a_cf, e, e_bl, m_ctx, patterns, mouse)
+            dr, de, da = fun(i, states, e, e_bl, m_ctx, adaptation, patterns, mouse)
                 
             for k in range(self.Np):
                 white_noise = np.random.normal(size=self.pops[k].size) * noise[k]
                 states[k][:,i+1] = states[k][:,i] + dt * dr[k] + white_noise
             for k in range(len(e)):
                 e[k] += dt * de[k]
+            adaptation += dt * da
 
             ### Update eligibility traces 
             if i - delta_t > 0 and etrace:
@@ -167,9 +170,13 @@ class RateNetwork(Network):
                 print('Mouse retrieved water')
             
             ### Update synaptic weight based on eligibility traces
-            if etrace and a1 != None:
-                self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
-
+#             if etrace and a1 != None:
+#                 self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
+            if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
+#             if mouse.action_dur == 200:
+                print(rpe[mouse.actions.index(a1) + int(8 * mouse.w + 4 * mouse.b)])
+                self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1) + int(8 * mouse.w + 4 * mouse.b)])
+            
         # ===================================================================================================================================
         # SAVE 
         # ===================================================================================================================================
@@ -242,7 +249,7 @@ class RateNetwork(Network):
         """
         Euler-Maryama scheme
         """
-        logger.info("Integrating network dynamics")
+        logger.inmeansfo("Integrating network dynamics")
         self.r_ext = r_ext
         state = np.zeros((self.exc.size, int((t-t0)/dt)))
         field = np.zeros_like(state)
@@ -275,7 +282,7 @@ class RateNetwork(Network):
     def _fun1(self, pbar, t_max):
         def f(t, r, return_field=False):
             """
-            Rate formulation 1
+            Rate meansformulation 1
             """
             # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
             pbar.update(1)
@@ -340,7 +347,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, pbar, t_max):
-        def f(t, states, a_cf, e, e_bl, overlaps, patterns, mouse, return_field=False):
+        def f(t, states, e, e_bl, overlaps, a, patterns, mouse, return_field=False):
             """
             Rate formulation 4
             """
@@ -355,7 +362,7 @@ class RateNetwork(Network):
                 phi_r = self.pops[0].phi
             r1, r2 = states[0][:,t], states[1][:,t]
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) + mouse.env(e, patterns[0]))
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) + mouse.env(e, patterns[0]) - a)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             
             dr1 = (-r1 + r_sum1) / self.tau
@@ -381,8 +388,10 @@ class RateNetwork(Network):
             else:
                 for i in range(len(overlaps)):
                     de[i] = (-e[i] + e_bl[i] - overlaps[i]*.95) / (self.tau * ctau)
+            
+            da = (-a + r1) / (100 * self.tau)
 
-            return [dr1, dr2], de
+            return [dr1, dr2], de, da
 
         return f
 

@@ -1,8 +1,14 @@
-python code-learning.py learning-env 0 0 0 0 1 1
-python code-learning.py learning-env 0 0 0 0 0.8 1
-python code-learning.py learning-env 0 0 0 0 0.6 1
-python code-learning.py learning-env 0 0 0 0 0.4 1
-python code-learning.py learning-env 0 0 0 0 0.2 1
+python code-learning.py learning-env 300 0.03 750 0.9 1 1
+python code-learning.py learning-env 300 0.04 750 0.9 1 1
+python code-learning.py learning-env 300 0.03 850 0.9 1 1
+python code-learning.py learning-env 300 0.04 850 0.9 1 1
+python code-learning.py learning-env 300 0.03 950 0.9 1 1
+python code-learning.py learning-env 300 0.04 950 0.9 1 1
+python code-learning.py learning-env 300 0.03 1050 0.9 1 1
+python code-learning.py learning-env 300 0.04 1050 0.9 1 1
+python code-learning.py learning-env 300 0.03 1150 0.9 1 1
+python code-learning.py learning-env 300 0.04 1150 0.9 1 1
+
 
 
 
