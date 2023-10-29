@@ -38,8 +38,6 @@ class SpikingNeurons(Population):
 
 class Network(object):
     def __init__(self, pops, J, inh=None):
-        """
-        """
         self.pops = pops 
         self.Np = len(pops)
         self.J = J
@@ -78,7 +76,7 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, e_bl, alpha, gamma, etrace=True, hyper=False, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.2, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, e_bl, alpha, gamma, adap, env, etrace=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.3, print_output=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -121,7 +119,7 @@ class RateNetwork(Network):
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
             ### Update firing rate 
             m_ctx = overlap(states[0][:,i], patterns[0])
-            dr, de, da = fun(i, states, e, e_bl, m_ctx, adaptation, patterns, mouse)
+            dr, de, da = fun(i, states, e, e_bl, m_ctx, adaptation, patterns, mouse, env, adap)
                 
             for k in range(self.Np):
                 white_noise = np.random.normal(size=self.pops[k].size) * noise[k]
@@ -347,7 +345,7 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, pbar, t_max):
-        def f(t, states, e, e_bl, overlaps, a, patterns, mouse, return_field=False):
+        def f(t, states, e, e_bl, overlaps, a, patterns, mouse, env, adap, return_field=False):
             """
             Rate formulation 4
             """
@@ -362,34 +360,35 @@ class RateNetwork(Network):
                 phi_r = self.pops[0].phi
             r1, r2 = states[0][:,t], states[1][:,t]
             
-            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) + mouse.env(e, patterns[0]) - a)
+            r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) + env * mouse.env(e, patterns[0]) - adap*a)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
             
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
             de = np.zeros(len(e), dtype='float')
             
-            cur_action = np.argmax(overlaps)
-            ctau = 25
-            if cur_action == 0:
-                de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
-                de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
-                de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
-                de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
-            elif cur_action == 1:
-                de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
-                de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
-                if mouse.w == 1:
-                    de[1] = (-e[1] + e_bl[1] - overlaps[1]*.95) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+            if env:
+                cur_action = np.argmax(overlaps)
+                ctau = 25
+                if cur_action == 0:
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
+                elif cur_action == 1:
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.95) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.95) / (self.tau * ctau)
+                    if mouse.w == 1:
+                        de[1] = (-e[1] + e_bl[1] - overlaps[1]*.95) / (self.tau * ctau)
+                        de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+                    else:
+                        de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
+                        de[2] = (-e[2] + e_bl[2] - overlaps[2]*.95) / (self.tau * ctau)                    
                 else:
-                    de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] - overlaps[2]*.95) / (self.tau * ctau)                    
-            else:
-                for i in range(len(overlaps)):
-                    de[i] = (-e[i] + e_bl[i] - overlaps[i]*.95) / (self.tau * ctau)
+                    for i in range(len(overlaps)):
+                        de[i] = (-e[i] + e_bl[i] - overlaps[i]*.95) / (self.tau * ctau)
             
-            da = (-a + r1) / (100 * self.tau)
+            da = (-a + r1) / (25 * self.tau)
 
             return [dr1, dr2], de, da
 

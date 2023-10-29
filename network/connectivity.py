@@ -51,9 +51,12 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
                     J.W.data[J.W.data < 0] = 0
                 elif sign == -1:
                     print('')
-                    J.W.data[J.W.data < 0] -= 0.02
+                    J.W.data[J.W.data < 0] -= 0
                     J.W.data[J.W.data > 0] = 0
-                    
+                else:
+                    J.W.data[J.W.data < 0] -= 0.01
+                
+              
             rowblock = np.append(rowblock, J)
 
         Jmat = np.vstack((Jmat, rowblock)) if Jmat.size else rowblock
