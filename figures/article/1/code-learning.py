@@ -36,13 +36,13 @@ init_inputs = [np.zeros(ctx.size),
                np.zeros(d1.size)]
 input_patterns = [p[0] for p in patterns]
 
-T=10 #ms
+T=15 #ms
 mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
                           delta_t=delta_t, eta=eta, tau_e=tau_e, lamb=lamb, 
-                          noise=[0.13,0.13,0.13], e_bl = [0.055,0.022,0.04,0.07],
-                          alpha=alpha, gamma = gamma, etrace=True, 
-                          env=True, r_ext=[lambda t:0, lambda t: .5], print_output=False)
+                          noise=[0.13,0.13,0.13], e_bl = [0.06,0.031,0.04,0.07],
+                          alpha=alpha, gamma = gamma, adap=0, env=2.4, etrace=True, 
+                          r_ext=[lambda t:0, lambda t: .5], print_output=False)
 
 ### Save
 overlaps_ctx = sequences[0][0].overlaps(network.pops[0])

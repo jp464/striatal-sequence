@@ -88,9 +88,9 @@ T=8 #ms
 mouse = ReachingTask()
 network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity, 
                           delta_t=300, eta=0.05, tau_e=800, lamb=0.3, 
-                          noise=[0.13,0.13,0.13], a_cf=0, e_bl = [0.055,0.0022,0.04,0.07], 
-                          alpha=0, gamma=0, etrace=False, #[0.05,0.003,0.045,0.07]
-                          hyper=False, r_ext=[lambda t:0, lambda t: .5], print_output=False)
+                          noise=[0.13,0.13,0.13], e_bl = [0.055,0.0022,0.04,0.07], 
+                          alpha=0, gamma=0, adap=0, env=0, etrace=False, #[0.05,0.003,0.045,0.07]
+                          r_ext=[lambda t:0, lambda t: .5], print_output=False)
 
 #=======================SAVE=======================
 overlaps_ctx = sequences[0][0].overlaps(network.pops[0])
@@ -104,7 +104,6 @@ def detect_seq(pre, post):
     if 0 == post: return 1
     return 0
     
-seq = True
 behavior = mouse.behaviors[0][1:]
 score = 0
 for i in range(len(behavior)):
@@ -112,7 +111,11 @@ for i in range(len(behavior)):
     if post == None: break
     else: pre, post = pre[0], post[0]
     score += detect_seq(pre, post)
+
+seq = score > 0 and v_ctx > 0
+if not seq and max(overlaps_ctx[:,-1]) > 0.3: att = True
+else: att = False
     
 df = pd.read_hdf('/work/jp464/striatum-sequence/output/retrieval_speed.h5', 'data')
-df.loc[len(df)] = [A0, A1, A2, A3, v_ctx, v_d1, score > 0 and v_ctx > 0 and v_d1 >0]
+df.loc[len(df)] = [A0, A1, A2, A3, v_ctx, v_d1, seq, att]
 df.to_hdf('/work/jp464/striatum-sequence/output/retrieval_speed.h5', 'data')

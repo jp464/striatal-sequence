@@ -34,7 +34,8 @@ class ReachingTask(Learning):
             
     def water(self, a0, a1):
         if self.b == 1 and a1 == 'reach':
-            self.w = np.random.binomial(1, .9, 1)[0]
+#             self.w = np.random.binomial(1, .9, 1)[0]
+            self.w = 1
         elif a0 == 'reach' and a1 != 'lick':
             self.w = 0
     
@@ -44,7 +45,7 @@ class ReachingTask(Learning):
             self.r = 0
         if self.w == 1 and a == 'lick':
             if self.action_dur == 0: self.r = reward 
-            if self.action_dur > 200: self.w = 0
+            if self.action_dur > 50: self.w = 0
         else:
             self.r = 0 
             

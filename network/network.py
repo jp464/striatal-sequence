@@ -369,26 +369,30 @@ class RateNetwork(Network):
             if env:
                 cur_action = np.argmax(overlaps)
                 ctau = 25
+                cf_a = cf_r = cf_l = .8
+                cf_s = .8
                 
                 if cur_action == 0:
-                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.75) / (self.tau * ctau)
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
                     de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
                     de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.75) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
                 elif cur_action == 1:
-                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.75) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.75) / (self.tau * ctau)
-                    if mouse.w == 1:
-                        de[1] = (-e[1] + e_bl[1] - overlaps[1]*.75) / (self.tau * ctau)
-                        de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
-                    else:
-                        de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
-                        de[2] = (-e[2] + e_bl[2] - overlaps[2]*.75) / (self.tau * ctau)                    
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+#                     if mouse.w == 1:
+#                         de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
+#                         de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+#                     else:
+#                         de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
+#                         de[2] = (-e[2] + e_bl[2] - overlaps[2]*cf_l) / (self.tau * ctau)                    
                 else:
-                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*.75) / (self.tau * ctau)
-                    de[1] = (-e[1] + e_bl[1] - overlaps[1]*.75) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] - overlaps[2]*.75) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*.7) / (self.tau * ctau)            
+                    de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] - overlaps[2]*cf_l) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)            
             da = (-a + r1) / (25 * self.tau)
 
             return [dr1, dr2], de, da
