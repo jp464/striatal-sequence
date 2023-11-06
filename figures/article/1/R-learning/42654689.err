@@ -1,0 +1,4 @@
+INFO:connectivity:Building connections from ctx to ctx
+INFO:connectivity:Building connections from ctx to d1
+slurmstepd: error: *** JOB 42654689 ON dcc-core-28 CANCELLED AT 2023-11-05T20:35:13 ***
+slurmstepd: error: *** STEP 42654689.0 ON dcc-core-28 CANCELLED AT 2023-11-05T20:35:13 ***

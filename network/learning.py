@@ -29,25 +29,24 @@ class ReachingTask(Learning):
     def barrier(self, a):
         if a == 'aim':
             self.b = 1
-        if (a == 'reach' and self.w == 1) or a == 'scavenge':
+        else:
             self.b = 0
             
     def water(self, a0, a1):
         if self.b == 1 and a1 == 'reach':
 #             self.w = np.random.binomial(1, .9, 1)[0]
             self.w = 1
-        elif a0 == 'reach' and a1 != 'lick':
-            self.w = 0
+        else: self.w = 0
     
     # Detect whether mouse received reward
     def compute_reward(self, a, reward=1):
-        if self.r:
-            self.r = 0
+
         if self.w == 1 and a == 'lick':
             if self.action_dur == 0: self.r = reward 
-            if self.action_dur > 50: self.w = 0
+            else: self.r = 0
         else:
-            self.r = 0 
+            self.r = 0
+
             
     # Environmental variabe
     def env(self, C, patterns):
@@ -87,8 +86,6 @@ class ReachingTask(Learning):
         outcome = rs[i] + gamma*value[idx1+s1]
 #         print(prediction, outcome)
         rpe[idx1+s1] = outcome - prediction 
-        
-        
         
         if s0 == 3:
             pass

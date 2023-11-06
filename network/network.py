@@ -11,6 +11,8 @@ from helpers import spike_to_rate, determine_action, action_transition, hyperpol
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
 from transfer_functions import erf, ErrorFunction
+import pandas as pd
+import h5py
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class SpikingNeurons(Population):
         super(SpikingNeurons, self).__init__(N, None, None)
         self.name = name
         self.tau_mem = tau_mem
-        self.tau_syn = tau_syn
+        self.tau_syn = tau_syndf1 = df1.assign(e=pd.Series(np.random.randn(sLength)).values)
         self.thresh = thresh
         self.reset = reset
 
@@ -76,7 +78,8 @@ class RateNetwork(Network):
         elif self.formulation == 5:
             self._fun = self._fun5
             
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, e_bl, alpha, gamma, adap, env, etrace=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.3, print_output=False):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, delta_t, eta, tau_e, lamb, noise, e_bl, alpha, gamma, adap, env, 
+                          etrace=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.3, print_output=False, track=False):
         logger.info("Integrating network dynamics")
         if self.disable_pbar:
             pbar = progressbar
@@ -108,6 +111,9 @@ class RateNetwork(Network):
         ws = np.zeros(int((t-t0)/dt))
         bs = np.zeros(int((t-t0)/dt))
         rs = np.zeros(int((t-t0)/dt))
+        check = False
+        mouse.evars = np.zeros((len(e_bl), int((t-t0)/dt)))
+        
         
         # eligibility trace parameters  
         eprev = None
@@ -117,6 +123,9 @@ class RateNetwork(Network):
         # SIMULATION
         # ===================================================================================================================================
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
+            
+            mouse.evars[:,i] = np.array(e)
+            
             ### Update firing rate 
             m_ctx = overlap(states[0][:,i], patterns[0])
             dr, de, da = fun(i, states, e, e_bl, m_ctx, adaptation, patterns, mouse, env, adap)
@@ -131,8 +140,8 @@ class RateNetwork(Network):
             ### Update eligibility traces 
             if i - delta_t > 0 and etrace:
                 if print_output:
-                    pre = determine_action(states[0][:,i-delta_t], patterns[0], thres=detection_thres)
-                    post = determine_action(states[1][:,i+1], patterns[1], thres=detection_thres)
+                    pre = determine_action(states[0][:,i-delta_t], patterns[0], thres=0.15)
+                    post = determine_action(states[1][:,i+1], patterns[1], thres=0.15)
                     
                     if eprev == [pre, post]:
                         ecnt += 1
@@ -141,7 +150,6 @@ class RateNetwork(Network):
                         ecnt = 0
                         eprev = [pre, post]
                 self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-            
             ### Update mouse behavior 
             mouse.action_dur += 1 
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
@@ -149,11 +157,11 @@ class RateNetwork(Network):
             if prev_idxs[0] > 0: a0, a1 = mouse.get_action(mouse.behaviors[0][prev_idxs[0]-1][0]), mouse.get_action(mouse.behaviors[0][prev_idxs[0]][0])
             else: continue
             
-            mouse.water(a0, a1)
-            mouse.barrier(a1)
-            mouse.compute_reward(a1)
-                
             if transitions[0]:
+                mouse.compute_reward(a1)
+                mouse.water(a0, a1)
+                mouse.barrier(a1)
+        
                 if print_output:
                     print(a0 + "-->" + a1)
                 bs[prev_idxs[0]] = mouse.b
@@ -163,16 +171,28 @@ class RateNetwork(Network):
                 ### Compute RPE, V
                 if a1 != None:
                     rpe, value = mouse.compute_error_value(prev_idxs[0], a0, a1, bs, ws, rs, value, rpe, gamma=gamma, alpha=alpha)
-                    
-            if mouse.r and print_output:
-                print('Mouse retrieved water')
-            
+
             ### Update synaptic weight based on eligibility traces
 #             if etrace and a1 != None:
 #                 self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
-            if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
-#             if mouse.action_dur == 200:
-                self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=1)
+#             if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
+            if mouse.r and mouse.action_dur == delta_t+100:
+                if etrace:
+                    delta = rpe[int(mouse.actions.index(a1) + 4*bs[prev_idxs[0]] + 8*ws[prev_idxs[0]])]
+                    self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=delta)
+                print('Mouse drank water')
+                if track:
+                    df = pd.read_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
+                    col = str(delta_t) + '-' + str(eta) + '-' + str(tau_e) + '-' + str(lamb)
+                    if col in df:
+                        df.at[0, col] += 1 
+                        df.at[2, col] = i - df.at[1, col]
+                        df.at[1, col] = i
+                    else:
+                        df[col] = pd.Series([0,0,0])
+                        df.at[0, col], df.at[1, col] , df.at[2,col] = 1, i, 0
+                    df.to_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
+
             
         # ===================================================================================================================================
         # SAVE 
@@ -246,7 +266,7 @@ class RateNetwork(Network):
         """
         Euler-Maryama scheme
         """
-        logger.inmeansfo("Integrating network dynamics")
+        logger.inmeansfo("Integrating network d1ynamics")
         self.r_ext = r_ext
         state = np.zeros((self.exc.size, int((t-t0)/dt)))
         field = np.zeros_like(state)
@@ -369,19 +389,19 @@ class RateNetwork(Network):
             if env:
                 cur_action = np.argmax(overlaps)
                 ctau = 25
-                cf_a = cf_r = cf_l = .8
-                cf_s = .8
+                cf_a = cf_r = cf_l = 0.8
+                cf_s = 0.8
                 
                 if cur_action == 0:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
-                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.01) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.01) / (self.tau * ctau)
                     de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
                 elif cur_action == 1:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
                     de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
                     de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.02) / (self.tau * ctau)
 #                     if mouse.w == 1:
 #                         de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
 #                         de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)

@@ -81,7 +81,7 @@ J = set_connectivity([ctx, d1], cp, cw, A, patterns, plasticity)
 network = RateNetwork([ctx, d1], J, formulation=4, disable_pbar=False)
 
 #=======================SIMULATION=======================
-init_inputs = [np.zeros(ctx.size),
+init_inputs = [patterns[0][0][3],
                np.zeros(d1.size)]
 input_patterns = [p[0] for p in patterns]
 T=8 #ms
