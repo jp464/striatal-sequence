@@ -197,10 +197,11 @@ class SparseConnectivity(Connectivity):
         N = inputs_post.shape[0]
 #         logger.info("Updating network")
         data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
-        data = np.asarray(data) / self.K
-         
         dE = -(self.E / tau_e) + (scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32) * eta)
         self.E += dE.tocsr()
+
+    def reward_etrace(self, lamb, R):
+        self.W = lamb * self.W + R * self.E
         
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")

@@ -32,7 +32,7 @@ J = set_connectivity([ctx, d1], cp, cw, A, patterns, plasticity)
 network = RateNetwork([ctx, d1], J, formulation=4, disable_pbar=False)
 
 ### Simiulation
-init_inputs = [patterns[0][0][3],
+init_inputs = [patterns[0][0][1],
                np.zeros(d1.size)]
 input_patterns = [p[0] for p in patterns]
 
@@ -42,10 +42,12 @@ network.simulate_learning(mouse, T, init_inputs, input_patterns, plasticity,
                           delta_t=delta_t, eta=eta, tau_e=tau_e, lamb=lamb, 
                           noise=[0.13,0.13,0.13], e_bl = [0.06,misc,0.04,0.07], 
                           alpha=0, gamma=0, adap=0, env=2.4, etrace=True, 
-                          r_ext=[lambda t:0, lambda t: .5], print_output=False, track=True)
+                          r_ext=[lambda t:0, lambda t: .5], print_output=False, track=False)
 
 ### Save
 overlaps_ctx = sequences[0][0].overlaps(network.pops[0])
 overlaps_d1 = sequences[1][0].overlaps(network.pops[1])
 np.savez('/work/jp464/striatum-sequence/' + filename + '.npz', 
-         overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1, behaviors=mouse.behaviors)
+         overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1,
+         state_ctx=network.pops[0].state, state_d1=network.pops[1].state,
+         behaviors=mouse.behaviors)

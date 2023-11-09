@@ -6,7 +6,7 @@ import scipy.integrate
 from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
-from connectivity import Connectivity
+from connectivity import Connectivity, LinearSynapse
 from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize, overlap
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
@@ -58,8 +58,6 @@ class Network(object):
             self.tau = pops[0].tau
         self.xi = None
         self.r_ext = [lambda t:0 for i in range(len(pops))]
-#         self.etrace = np.zeros((self.size, self.size))
-
 
 class RateNetwork(Network):
     def __init__(self, pops, J, inh=None, formulation=1, disable_pbar=False):
@@ -113,7 +111,7 @@ class RateNetwork(Network):
         rs = np.zeros(int((t-t0)/dt))
         check = False
         mouse.evars = np.zeros((len(e_bl), int((t-t0)/dt)))
-        
+        check = False
         
         # eligibility trace parameters  
         eprev = None
@@ -149,7 +147,7 @@ class RateNetwork(Network):
                         print(eprev, ecnt)
                         ecnt = 0
                         eprev = [pre, post]
-                self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+#                 self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
             ### Update mouse behavior 
             mouse.action_dur += 1 
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
@@ -161,12 +159,14 @@ class RateNetwork(Network):
                 mouse.compute_reward(a1)
                 mouse.water(a0, a1)
                 mouse.barrier(a1)
+                check = True
         
                 if print_output:
                     print(a0 + "-->" + a1)
                 bs[prev_idxs[0]] = mouse.b
                 ws[prev_idxs[0]] = mouse.w
                 rs[prev_idxs[0]] = mouse.r
+                
                 
                 ### Compute RPE, V
                 if a1 != None:
@@ -176,22 +176,32 @@ class RateNetwork(Network):
 #             if etrace and a1 != None:
 #                 self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
 #             if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
-            if mouse.r and mouse.action_dur == delta_t+100:
+            if a0 == 'aim' and a1 == 'reach' and m_ctx[1] < 0.2 and check == True:
+                check = False
+                print('Mouse drank water', eprev, ecnt)
+                
+#                     delta = rpe[int(mouse.actions.index(a1) + 4*bs[prev_idxs[0]] + 8*ws[prev_idxs[0]])]
+#                     self.J[0][1].update_etrace(patterns[0][0], patterns[1][1], eta=.2, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+#                     self.J[0][1].update_etrace(patterns[0][1], patterns[1][2], eta=.2, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+#                     self.J[0][1].update_etrace(patterns[0][2], patterns[1][3], eta=.2, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+#                     self.J[0][1].update_etrace(patterns[0][0], patterns[1][0], eta=4, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+#                     self.J[0][1].update_etrace(patterns[0][1], patterns[1][1], eta=4, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+#                     self.J[0][1].update_etrace(patterns[0][2], patterns[1][2], eta=4, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
                 if etrace:
-                    delta = rpe[int(mouse.actions.index(a1) + 4*bs[prev_idxs[0]] + 8*ws[prev_idxs[0]])]
-                    self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=delta)
-                print('Mouse drank water')
-                if track:
-                    df = pd.read_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
-                    col = str(delta_t) + '-' + str(eta) + '-' + str(tau_e) + '-' + str(lamb)
-                    if col in df:
-                        df.at[0, col] += 1 
-                        df.at[2, col] = i - df.at[1, col]
-                        df.at[1, col] = i
-                    else:
-                        df[col] = pd.Series([0,0,0])
-                        df.at[0, col], df.at[1, col] , df.at[2,col] = 1, i, 0
-                    df.to_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
+                    self.J[0][1].reward_etrace(lamb=lamb, R=1)
+
+                    
+#                 if track:
+#                     df = pd.read_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
+#                     col = str(delta_t) + '-' + str(eta) + '-' + str(tau_e) + '-' + str(lamb)
+#                     if col in df:
+#                         df.at[0, col] += 1 
+#                         df.at[2, col] = i - df.at[1, col]
+#                         df.at[1, col] = i
+#                     else:
+#                         df[col] = pd.Series([0,0,0])
+#                         df.at[0, col], df.at[1, col] , df.at[2,col] = 1, i, 0
+#                     df.to_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
 
             
         # ===================================================================================================================================

@@ -1,6 +1,0 @@
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to d1
-INFO:network:Integrating network dynamics
-slurmstepd: error: *** JOB 42654690 ON dcc-core-16 CANCELLED AT 2023-11-05T20:35:13 ***

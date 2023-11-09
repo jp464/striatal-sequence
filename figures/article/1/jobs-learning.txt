@@ -1,9 +1,9 @@
-python code-learning.py learning-env 20 0.04 1000 0.6 06 50 0.0187
-python code-learning.py learning-env 30 0.04 1000 0.6 06 50 0.0187
-python code-learning.py learning-env 40 0.04 1000 0.6 06 50 0.0187
-python code-learning.py learning-env 50 0.04 1000 0.6 06 50 0.0187
-python code-learning.py learning-env 21 0.04 1000 0.6 07 50 0.0187 
-python code-learning.py learning-env 31 0.04 1000 0.6 07 50 0.0187
-python code-learning.py learning-env 41 0.04 1000 0.6 07 50 0.0187
-python code-learning.py learning-env 51 0.04 1000 0.6 07 50 0.0187
+00\python code-learning.py learning-env 40 0.01 1800 0.6 01 10 0.016
+python code-learning.py learning-env 40 0.02 1100 0.6 01 10 0.016
+python code-learning.py learning-env 40 0.03 1100 0.6 01 10 0.016
+python code-learning.py learning-env 40 0.04 1100 0.6 01 10 0.016
+python code-learning.py learning-env 100 0.01 1100 0.6 01 10 0.016
+python code-learning.py learning-env 100 0.02 1100 0.6 01 10 0.016
+python code-learning.py learning-env 100 0.03 1100 0.6 01 10 0.016
+python code-learning.py learning-env 100 0.04 1100 0.6 01 10 0.016
 

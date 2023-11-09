@@ -2,7 +2,7 @@
 #SBATCH --job-name=param-exploration
 #SBATCH --output=learning.out
 #SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=100KB
+#SBATCH --mem-per-cpu=2GB
 #SBATCH --time=00:15:00
 #SBATCH --array=1-21601
 #SBATCH --mail-type=ALL
