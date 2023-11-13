@@ -2,9 +2,9 @@
 #SBATCH --job-name=learning
 #SBATCH --output=learning.out
 #SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=3G
-#SBATCH --time=05:00:00
-#SBATCH --array=1-8
+#SBATCH --mem-per-cpu=2G
+#SBATCH --time=03:00:00
+#SBATCH --array=1-3
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jp464@duke.edu  
 #SBATCH --output=R-%x/%j.out

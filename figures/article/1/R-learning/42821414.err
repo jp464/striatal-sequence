@@ -1,7 +1,0 @@
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to d1
-INFO:network:Integrating network dynamics
-slurmstepd: error: *** JOB 42821414 ON dcc-core-28 CANCELLED AT 2023-11-08T19:37:22 ***
-  0%|          | 0/9999 [00:00<?, ?it/s]  0%|          | 2/9999 [00:02<3:25:47,  1.24s/it]  0%|          | 23/9999 [00:02<13:35, 12.24it/s]   0%|          | 45/9999 [00:02<06:06, 27.20it/s]  1%|          | 67/9999 [00:02<03:40, 45.03it/s]  1%|          | 89/9999 [00:02<02:31, 65.23it/s]  1%|          | 109/9999 [00:05<08:02, 20.50it/s]  1%|          | 122/9999 [00:09<18:39,  8.83it/s]  1%|▏         | 131/9999 [00:12<25:05,  6.56it/s]  1%|▏         | 138/9999 [00:14<29:57,  5.49it/s]  1%|▏         | 143/9999 [00:16<33:16,  4.94it/s]  1%|▏         | 147/9999 [00:17<36:04,  4.55it/s]  2%|▏         | 150/9999 [00:18<38:12,  4.30it/s]slurmstepd: error: *** STEP 42821414.0 ON dcc-core-28 CANCELLED AT 2023-11-08T19:37:22 ***

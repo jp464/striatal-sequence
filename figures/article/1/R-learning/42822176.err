@@ -1,8 +1,0 @@
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to d1
-INFO:network:Integrating network dynamics
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
-slurmstepd: error: *** JOB 42822176 ON dcc-core-16 CANCELLED AT 2023-11-08T19:37:22 ***
-  0%|          | 0/9999 [00:00<?, ?it/s]slurmstepd: error: *** STEP 42822176.0 ON dcc-core-16 CANCELLED AT 2023-11-08T19:37:22 ***

@@ -147,7 +147,7 @@ class RateNetwork(Network):
                         print(eprev, ecnt)
                         ecnt = 0
                         eprev = [pre, post]
-#                 self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
             ### Update mouse behavior 
             mouse.action_dur += 1 
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
@@ -176,7 +176,7 @@ class RateNetwork(Network):
 #             if etrace and a1 != None:
 #                 self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
 #             if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
-            if a0 == 'aim' and a1 == 'reach' and m_ctx[1] < 0.2 and check == True:
+            if a0 == 'reach' and a1 == 'lick' and m_ctx[1] < 0.2 and check == True:
                 check = False
                 print('Mouse drank water', eprev, ecnt)
                 
@@ -404,14 +404,14 @@ class RateNetwork(Network):
                 
                 if cur_action == 0:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
-                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.01) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.01) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.05) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.05) / (self.tau * ctau)
                     de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
                 elif cur_action == 1:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
                     de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.02) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[1]*.1) / (self.tau * ctau)
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
 #                     if mouse.w == 1:
 #                         de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
 #                         de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
