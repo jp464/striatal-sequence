@@ -1,0 +1,2 @@
+slurmstepd: error: *** JOB 43271188 ON dcc-brunellab-gpu-04 CANCELLED AT 2023-11-18T22:33:18 ***
+slurmstepd: error: *** STEP 43271188.0 ON dcc-brunellab-gpu-04 CANCELLED AT 2023-11-18T22:33:18 ***

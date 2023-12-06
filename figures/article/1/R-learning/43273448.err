@@ -1,0 +1,4 @@
+/var/spool/slurmd/job43273448/slurm_script: line 12: fg: no job control
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 43273448.0 ON dcc-core-06 CANCELLED AT 2023-11-19T00:19:43 ***
+slurmstepd: error: *** JOB 43273448 ON dcc-core-06 CANCELLED AT 2023-11-19T00:19:43 ***

@@ -51,7 +51,7 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
                     J.W.data[J.W.data < 0] = 0
                 elif sign == -1:
                     J.W.data[J.W.data < 0] -= 0
-                    J.W.data[J.W.data > 0] = 0
+                    J.W.data[J.W.data > 0] = 0 
                 else:
                     J.W.data[J.W.data < 0] -= 0.01
                 
@@ -60,6 +60,24 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
 
         Jmat = np.vstack((Jmat, rowblock)) if Jmat.size else rowblock
     return Jmat
+
+def corticostriatal_baby(J, patterns, p1, p2): 
+    ij = J.ij
+    W = J.W.toarray()
+    sum = 0 
+    cnt = 0
+    for i in range(len(ij)):
+        J_i, pre, post = W[ij[i],i], patterns[0][p1][i], np.full(len(ij[i]), patterns[1][p2][ij[i]])
+        sum += np.sum(J_i * pre * post)
+        cnt += len(ij[i])
+    return sum / cnt
+
+def corticostriatal(J, patterns):
+    ret = np.zeros((4,4))
+    for i in range(4):
+        for j in range(4):
+            ret[j][i] = corticostriatal_baby(J, patterns, i, j)
+    return ret 
 
 def reset_connectivity(self):
     raise NotImplementedError

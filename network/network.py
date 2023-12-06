@@ -6,7 +6,7 @@ import scipy.integrate
 from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
-from connectivity import Connectivity, LinearSynapse
+from connectivity import Connectivity, LinearSynapse, corticostriatal
 from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize, overlap
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
@@ -111,11 +111,13 @@ class RateNetwork(Network):
         rs = np.zeros(int((t-t0)/dt))
         check = False
         mouse.evars = np.zeros((len(e_bl), int((t-t0)/dt)))
+        mouse.corticostriatal = np.zeros((4,4), dtype=float)
         check = False
         
         # eligibility trace parameters  
         eprev = None
         ecnt = 0
+        self.r_ext = r_ext
 
         # ===================================================================================================================================
         # SIMULATION
@@ -136,7 +138,7 @@ class RateNetwork(Network):
             adaptation += dt * da
 
             ### Update eligibility traces 
-            if i - delta_t > 0 and etrace:
+            if i - delta_t > 0:
                 if print_output:
                     pre = determine_action(states[0][:,i-delta_t], patterns[0], thres=0.15)
                     post = determine_action(states[1][:,i+1], patterns[1], thres=0.15)
@@ -147,7 +149,9 @@ class RateNetwork(Network):
                         print(eprev, ecnt)
                         ecnt = 0
                         eprev = [pre, post]
-                self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                if etrace:
+                    self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                
             ### Update mouse behavior 
             mouse.action_dur += 1 
             transitions = action_transition(i, mouse, prev_actions, prev_idxs, states, patterns, thres=detection_thres)
@@ -172,23 +176,15 @@ class RateNetwork(Network):
                 if a1 != None:
                     rpe, value = mouse.compute_error_value(prev_idxs[0], a0, a1, bs, ws, rs, value, rpe, gamma=gamma, alpha=alpha)
 
-            ### Update synaptic weight based on eligibility traces
-#             if etrace and a1 != None:
-#                 self.J[0][1].W = self.reward_etrace(W=self.J[0][1].W, E=self.J[0][1].E, lamb=lamb, R=rpe[mouse.actions.index(a1)][bs[prev_idxs[0]]][ws[prev_idxs[0]]])
-#             if etrace and a0 == 'reach' and a1 == 'lick' and mouse.action_dur == 200:
-            if a0 == 'reach' and a1 == 'lick' and m_ctx[1] < 0.2 and check == True:
+            ### Reward
+            if mouse.r and mouse.action_dur > 100 and check == True:
+#                  and m_ctx[2] < 0.05 
                 check = False
-                print('Mouse drank water', eprev, ecnt)
-                
-#                     delta = rpe[int(mouse.actions.index(a1) + 4*bs[prev_idxs[0]] + 8*ws[prev_idxs[0]])]
-#                     self.J[0][1].update_etrace(patterns[0][0], patterns[1][1], eta=.2, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-#                     self.J[0][1].update_etrace(patterns[0][1], patterns[1][2], eta=.2, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-#                     self.J[0][1].update_etrace(patterns[0][2], patterns[1][3], eta=.2, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-#                     self.J[0][1].update_etrace(patterns[0][0], patterns[1][0], eta=4, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-#                     self.J[0][1].update_etrace(patterns[0][1], patterns[1][1], eta=4, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
-#                     self.J[0][1].update_etrace(patterns[0][2], patterns[1][2], eta=4, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                print(a1, mouse.action_dur)
+                print('Mouse drank water')
                 if etrace:
                     self.J[0][1].reward_etrace(lamb=lamb, R=1)
+                mouse.corticostriatal = np.vstack((mouse.corticostriatal, corticostriatal(self.J[0][1], patterns)))
 
                     
 #                 if track:
@@ -391,7 +387,6 @@ class RateNetwork(Network):
             
             r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](t)) + env * mouse.env(e, patterns[0]) - adap*a)
             r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](t))
-            
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
             de = np.zeros(len(e), dtype='float')
@@ -404,27 +399,21 @@ class RateNetwork(Network):
                 
                 if cur_action == 0:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
-                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.05) / (self.tau * ctau)
-                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.05) / (self.tau * ctau)
+                    de[1] = (-e[1] + e_bl[1] + overlaps[0]*.1) / (self.tau * ctau)
+                    de[2] = (-e[2] + e_bl[2] + overlaps[0]*.1) / (self.tau * ctau)
                     de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
                 elif cur_action == 1:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
                     de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
                     de[2] = (-e[2] + e_bl[2] + overlaps[1]*.1) / (self.tau * ctau)
-                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)
-#                     if mouse.w == 1:
-#                         de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
-#                         de[2] = (-e[2] + e_bl[2] + overlaps[1]*.27) / (self.tau * ctau)
-#                     else:
-#                         de[1] = (-e[1] + e_bl[1] + overlaps[1]*.27) / (self.tau * ctau)
-#                         de[2] = (-e[2] + e_bl[2] - overlaps[2]*cf_l) / (self.tau * ctau)                    
+                    de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)         
                 else:
                     de[0] = (-e[0] + e_bl[0] - overlaps[0]*cf_a) / (self.tau * ctau)
                     de[1] = (-e[1] + e_bl[1] - overlaps[1]*cf_r) / (self.tau * ctau)
                     de[2] = (-e[2] + e_bl[2] - overlaps[2]*cf_l) / (self.tau * ctau)
                     de[3] = (-e[3] + e_bl[3] - overlaps[3]*cf_s) / (self.tau * ctau)            
             da = (-a + r1) / (25 * self.tau)
-
+            
             return [dr1, dr2], de, da
 
         return f

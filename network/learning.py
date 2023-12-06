@@ -42,8 +42,7 @@ class ReachingTask(Learning):
     def compute_reward(self, a, reward=1):
 
         if self.w == 1 and a == 'lick':
-            if self.action_dur == 0: self.r = reward 
-            else: self.r = 0
+            self.r = reward
         else:
             self.r = 0
 

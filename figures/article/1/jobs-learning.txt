@@ -1,13 +1,18 @@
-python code-learning.py learning-env 40 0.0005 800 0.6 01 10 0.0195
-python code-learning.py learning-env 40 0.0005 1200 0.6 01 10 0.0195
-python code-learning.py learning-env 40 0.0005 1500 0.6 01 10 0.0195
-python code-learning.py learning-env 40 0.0005 2000 0.6 01 10 0.0195
-python code-learning.py learning-env 40 0.0005 2000 0.6 01 10 0.0195
-
-
-
-
-
-
-
-
+python code-learning.py L35 40 0.002 1200 0 30 0.013
+python code-learning.py L35 40 0.002 1200 89 30 0.013
+python code-learning.py L35 40 0.002 1200 0.9 30 0.013
+python code-learning.py L35 40 0.002 1100 0 30 0.013
+python code-learning.py L35 40 0.002 1100 89 30 0.013
+python code-learning.py L35 40 0.002 1100 0.9 30 0.013
+python code-learning.py L35 40 0.002 1000 0 30 0.013
+python code-learning.py L35 40 0.002 1000 89 30 0.013
+python code-learning.py L35 40 0.002 1000 0.9 30 0.013
+python code-learning.py L35 45 0.002 1200 0 30 0.013
+python code-learning.py L35 45 0.002 1200 89 30 0.013
+python code-learning.py L35 45 0.002 1200 0.9 30 0.013
+python code-learning.py L35 45 0.002 1100 0 30 0.013
+python code-learning.py L35 45 0.002 1100 89 30 0.013
+python code-learning.py L35 45 0.002 1100 0.9 30 0.013
+python code-learning.py L35 45 0.002 1000 0 30 0.013
+python code-learning.py L35 45 0.002 1000 89 30 0.013
+python code-learning.py L35 45 0.002 1000 0.9 30 0.013
