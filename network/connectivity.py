@@ -7,9 +7,12 @@ from tqdm import trange
 from scipy.stats import lognorm, norm
 from itertools import cycle
 from helpers import adder 
+import sys
 
 logger = logging.getLogger(__name__)
 
+# params: size: number of patterns, val: value of synaptic strength A, z: 1 if symmetric and 0 if asymmetric
+# returns the matrix of synaptic strength A between every pair of patterns for a given connectivity matrix 
 def cmatrix(size, val, z):
     M = np.zeros(size)
     S, AS = z * val, (1-z) * val
@@ -25,7 +28,8 @@ def cmatrix(size, val, z):
                 M[i][j] = AS
     return M  
 
-# sets connectivity for multi-network model
+# params: pops: array of networks, cp: connection probabilty matrix, cw: sign constraint matrix, patterns: array of patterns, plasticity: learning rule functions 
+# returns block matrix of connectivity matrices 
 def set_connectivity(pops, cp, cw, A, patterns, plasticity):
     Jmat = np.array([])
     for pop1 in range(len(pops)):
@@ -54,8 +58,6 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
                     J.W.data[J.W.data > 0] = 0 
                 else:
                     J.W.data[J.W.data < 0] -= 0.01
-                
-              
             rowblock = np.append(rowblock, J)
 
         Jmat = np.vstack((Jmat, rowblock)) if Jmat.size else rowblock
@@ -167,7 +169,7 @@ class Connectivity(object):
 class SparseConnectivity(Connectivity):
     def __init__(self, source, target, p=0.005, fixed_degree=False, seed=42, disable_pbar=False):
         self.W = scipy.sparse.csr_matrix((target.size, source.size), dtype=np.float32)
-        self.E = scipy.sparse.csr_matrix((target.size, source.size), dtype=np.float32)
+        self.E = None
         self.p = p
         self.K = p*target.size
         self.ij = []
@@ -211,15 +213,26 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
         
-    def update_etrace(self, inputs_pre, inputs_post, eta, tau_e, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+    def update_etrace(self, t, inputs_pre, inputs_post, eta, tau_e, time_ls, data_prev, row, col, R=0, h=lambda x:x, f=lambda x:x, g=lambda x:x, disable_pbar=True):
         N = inputs_post.shape[0]
-#         logger.info("Updating network")
-        data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
-        dE = -(self.E / tau_e) + (scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32) * eta)
-        self.E += dE.tocsr()
+        data = []
+        for j in trange(N, disable=disable_pbar):
+            i = self.ij[j]
+            w = f(inputs_post[i]) * g(inputs_pre[j])
+            data.extend(w)
+            
+        change = [c - p for c, p in zip(data, data_prev)]
+        
+        for i, synapse in enumerate(change):
+            if abs(synapse) > sys.float_info.epsilon or R:
+                e_ij = self.E[i]     
+                self.E[i] = e_ij * np.exp(-(t-time_ls[i])/tau_e) + eta * data_prev[i] * (1 - np.exp(-(t-time_ls[i])/tau_e))
+                time_ls[i] = t
+        return data, time_ls
 
-    def reward_etrace(self, lamb, R):
-        self.W = lamb * self.W + R * self.E
+    def reward_etrace(self, lamb, R, row, col):
+        
+        self.W = lamb * self.W + R * scipy.sparse.coo_matrix((self.E, (row, col)), dtype=np.float32)
         
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")

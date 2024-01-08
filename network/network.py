@@ -109,14 +109,23 @@ class RateNetwork(Network):
         ws = np.zeros(int((t-t0)/dt))
         bs = np.zeros(int((t-t0)/dt))
         rs = np.zeros(int((t-t0)/dt))
-        check = False
         mouse.evars = np.zeros((len(e_bl), int((t-t0)/dt)))
         mouse.corticostriatal = np.zeros((4,4), dtype=float)
         check = False
         
         # eligibility trace parameters  
+        N_synapse, row, col = 0, [], []
+        for j in range(self.pops[0].size):
+            i = self.J[0][1].ij[j]
+            row.extend(i)
+            col.extend([j]*len(i))
+            N_synapse += len(i)
+            
+        self.J[0][1].E = np.zeros(N_synapse)
         eprev = None
         ecnt = 0
+        data = np.zeros(N_synapse)
+        time_ls = np.zeros(N_synapse)
         self.r_ext = r_ext
 
         # ===================================================================================================================================
@@ -150,7 +159,8 @@ class RateNetwork(Network):
                         ecnt = 0
                         eprev = [pre, post]
                 if etrace:
-                    self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                    data, time_ls = self.J[0][1].update_etrace(i, states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, 
+                                                               data_prev=data, time_ls=time_ls, row=row, col=col, f=plasticity.f, g=plasticity.g)
                 
             ### Update mouse behavior 
             mouse.action_dur += 1 
@@ -178,27 +188,13 @@ class RateNetwork(Network):
 
             ### Reward
             if mouse.r and mouse.action_dur > 100 and check == True:
-#                  and m_ctx[2] < 0.05 
                 check = False
-                print(a1, mouse.action_dur)
                 print('Mouse drank water')
                 if etrace:
+                    data, time_ls = self.J[0][1].update_etrace(i, states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, 
+                                           data_prev=data, time_ls=time_ls, R=1, f=plasticity.f, g=plasticity.g)
                     self.J[0][1].reward_etrace(lamb=lamb, R=1)
                 mouse.corticostriatal = np.vstack((mouse.corticostriatal, corticostriatal(self.J[0][1], patterns)))
-
-                    
-#                 if track:
-#                     df = pd.read_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
-#                     col = str(delta_t) + '-' + str(eta) + '-' + str(tau_e) + '-' + str(lamb)
-#                     if col in df:
-#                         df.at[0, col] += 1 
-#                         df.at[2, col] = i - df.at[1, col]
-#                         df.at[1, col] = i
-#                     else:
-#                         df[col] = pd.Series([0,0,0])
-#                         df.at[0, col], df.at[1, col] , df.at[2,col] = 1, i, 0
-#                     df.to_hdf('/work/jp464/striatum-sequence/output/performance.h5', 'data')
-
             
         # ===================================================================================================================================
         # SAVE 
