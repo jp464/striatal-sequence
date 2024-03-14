@@ -1,4 +1,0 @@
-slurmstepd: error: *** JOB 43271186 ON dcc-brunellab-gpu-02 CANCELLED AT 2023-11-18T22:33:18 ***
-slurmstepd: error: *** STEP 43271186.0 ON dcc-brunellab-gpu-02 CANCELLED AT 2023-11-18T22:33:18 ***
-srun: error: dcc-brunellab-gpu-02: task 0: Terminated
-srun: Force Terminated StepId=43271186.0

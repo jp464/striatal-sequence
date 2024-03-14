@@ -1,6 +1,0 @@
-INFO:connectivity:Building connections from ctx to ctx
-INFO:connectivity:Building connections from ctx to d1
-INFO:connectivity:Building connections from d1 to ctx
-INFO:connectivity:Building connections from d1 to d1
-slurmstepd: error: *** JOB 43265630 ON dcc-brunellab-gpu-01 CANCELLED AT 2023-11-18T16:48:21 ***
-slurmstepd: error: *** STEP 43265630.0 ON dcc-brunellab-gpu-01 CANCELLED AT 2023-11-18T16:48:21 ***

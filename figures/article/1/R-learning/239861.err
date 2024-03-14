@@ -1,0 +1,8 @@
+/var/spool/slurmd/job239861/slurm_script: line 12: fg: no job control
+INFO:connectivity:Building connections from ctx to ctx
+INFO:connectivity:Building connections from ctx to d1
+INFO:connectivity:Building connections from d1 to ctx
+INFO:connectivity:Building connections from d1 to d1
+INFO:network:Integrating network dynamics
+slurmstepd: error: *** JOB 239861 ON dcc-core-14 CANCELLED AT 2024-01-09T17:01:52 DUE TO TIME LIMIT ***
+slurmstepd: error: *** STEP 239861.0 ON dcc-core-14 CANCELLED AT 2024-01-09T17:01:52 DUE TO TIME LIMIT ***

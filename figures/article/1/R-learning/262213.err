@@ -1,5 +1,6 @@
+/var/spool/slurmd/job262213/slurm_script: line 12: fg: no job control
 Traceback (most recent call last):
   File "/hpc/home/jp464/striatal-sequence/figures/article/1/code-learning.py", line 5, in <module>
+srun: error: dcc-core-29: task 0: Exited with exit code 1
     import numpy as np
 ModuleNotFoundError: No module named 'numpy'
-srun: error: dcc-brunellab-gpu-02: task 0: Exited with exit code 1

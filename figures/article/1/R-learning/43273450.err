@@ -1,3 +1,0 @@
-/var/spool/slurmd/job43273450/slurm_script: line 12: fg: no job control
-slurmstepd: error: *** STEP 43273450.0 ON dcc-core-23 CANCELLED AT 2023-11-19T00:19:43 ***
-slurmstepd: error: *** JOB 43273450 ON dcc-core-23 CANCELLED AT 2023-11-19T00:19:43 ***

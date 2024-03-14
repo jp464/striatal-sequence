@@ -12,7 +12,7 @@ def spike_to_rate(spikes, window_std=20):
         estimate[i,:] = y
     return estimate
 
-def overlap(state, patterns):
+def compute_overlap(state, patterns):
     return [state.T.dot(p) / state.shape[0] for p in patterns]
 
 # Determines which action mouse is currently in 
@@ -26,18 +26,17 @@ def determine_action(state, patterns, thres=0.3, correlations=False):
         return maxind
     return -1
 
-def action_transition(t, mouse, prev_actions, prev_idxs, states, patterns, thres):
-    transitions = [False for i in range(len(states))]
-    for i in range(len(states)):
-        cur_action = determine_action(states[i][:,t], patterns[i], thres)
-        if mouse.behaviors[i][prev_idxs[i]][0] != cur_action:
-            if cur_action != -1:
-                if i==0: mouse.action_dur = 0
-                prev_actions[i] = cur_action
-                prev_idxs[i] += 1 
-                transitions[i] = True 
-                mouse.behaviors[i][prev_idxs[i]] = [cur_action,t]
-    return transitions
+def action_transition(i, mouse, states, patterns, thres):
+    next_action = determine_action(states[0][:,i], patterns[0][0], thres)
+    if mouse.action != next_action and next_action != -1:
+        mouse.compute_reward(next_action)
+        mouse.compute_water(mouse.action, next_action)
+        mouse.compute_barrier(next_action)
+        
+        mouse.action_dur = 0
+        mouse.action = next_action
+        return True 
+    return False 
 
 # Hyperpolarizing current if at an action for thres ms 
 def hyperpolarize(hyperpolarize_dur, cur_action, action_dur, r_ext, thres=500, h_dur=50, cur1=lambda t:-10, cur2=lambda t:0):

@@ -13,38 +13,36 @@ class Learning(object):
         self.values = None
         self.repes = None
     
-    def get_action(self, s):
-        return self.actions[int(s)]
-    
 class ReachingTask(Learning):
     def __init__(self):
         super().__init__()
-        self.actions = ['aim', 'reach', 'lick', 'scavenge', 'null']
-        self.b = 0
-        self.w = 0
+        self.barrier = 0
+        self.water = 0
+        self.action = 0
         self.action_dur = 0
-        self.r = 0
+        self.reward = 0
+        self.drank_water = 0
     
     # Detect whether mouse has acquired water
-    def barrier(self, a):
-        if a == 'aim':
-            self.b = 1
+    def compute_barrier(self, a):
+        if a == 0:
+            self.barrier = 1
         else:
-            self.b = 0
+            self.barrier = 0
             
-    def water(self, a0, a1):
-        if self.b == 1 and a1 == 'reach':
+    def compute_water(self, a0, a1):
+        if self.barrier == 1 and a1 == 1:
 #             self.w = np.random.binomial(1, .9, 1)[0]
-            self.w = 1
-        else: self.w = 0
+            self.water = 1
+        else: self.water = 0
     
     # Detect whether mouse received reward
     def compute_reward(self, a, reward=1):
 
-        if self.w == 1 and a == 'lick':
-            self.r = reward
+        if self.water == 1 and a == 2:
+            self.reward = reward
         else:
-            self.r = 0
+            self.reward = 0
 
             
     # Environmental variabe

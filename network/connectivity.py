@@ -13,20 +13,13 @@ logger = logging.getLogger(__name__)
 
 # params: size: number of patterns, val: value of synaptic strength A, z: 1 if symmetric and 0 if asymmetric
 # returns the matrix of synaptic strength A between every pair of patterns for a given connectivity matrix 
-def cmatrix(size, val, z):
-    M = np.zeros(size)
-    S, AS = z * val, (1-z) * val
-    for i in range(size[0]):
-        for j in range(size[1]):
-            if i == j:
-                M[i][j] = S
+def cmatrix(M, idxs, val, loop=False):
+    for group in idxs:
+        for i in range(len(group)):
+            if i == len(group)-1:
+                if loop: M[group[i]][0] = val
+            else: M[group[i]][group[i+1]] = val
 
-    M[-1][0] = (1-z) * val
-    for i in range(size[0]):
-        for j in range(size[1]):
-            if i+1 == j:
-                M[i][j] = AS
-    return M  
 
 # params: pops: array of networks, cp: connection probabilty matrix, cw: sign constraint matrix, patterns: array of patterns, plasticity: learning rule functions 
 # returns block matrix of connectivity matrices 
@@ -35,20 +28,15 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
     for pop1 in range(len(pops)):
         rowblock = np.array([])
         for pop2 in range(len(pops)):
-            J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
-                                  p=cp[pop1][pop2])
+            J = SparseConnectivity(source=pops[pop1], target=pops[pop2], p=cp[pop1][pop2])
             sign = cw[pop1][pop2]
             
-            for k in range(len(patterns[0])):
-                # store attractors or sequences 
-                Atemp = A[pop1][pop2]
-                for i in range(Atemp.shape[0]):
-                    for j in range(Atemp.shape[1]):
-                        if Atemp[i][j] == 0: continue
-                        synapse = LinearSynapse(J.K, Atemp[i][j])
-                        J.update_sequences(patterns[pop1][k][i],
-                                           patterns[pop2][k][j], synapse.h_EE,
-                                           plasticity.f, plasticity.g)
+            Atemp = A[pop1][pop2]
+            for i in range(Atemp.shape[0]):
+                for j in range(Atemp.shape[1]):
+                    if Atemp[i][j] == 0: continue
+                    synapse = LinearSynapse(J.K, Atemp[i][j])
+                    J.update_sequences(patterns[pop1][i], patterns[pop2][j], synapse.h_EE, plasticity.f, plasticity.g)
 
                 # sign constraint
                 if sign == 1:
@@ -213,26 +201,27 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
         
-    def update_etrace(self, t, inputs_pre, inputs_post, eta, tau_e, time_ls, data_prev, row, col, R=0, h=lambda x:x, f=lambda x:x, g=lambda x:x, disable_pbar=True):
-        N = inputs_post.shape[0]
-        data = []
-        for j in trange(N, disable=disable_pbar):
+    def update_etrace(self, t, etrace, inputs_pre, inputs_post, eta, tau_e, edata, etime, R=0, f=lambda x:x, g=lambda x:x, disable_pbar=True):
+        next_data = []
+        for j in trange(inputs_pre.shape[0], disable=disable_pbar):
             i = self.ij[j]
             w = f(inputs_post[i]) * g(inputs_pre[j])
-            data.extend(w)
-            
-        change = [c - p for c, p in zip(data, data_prev)]
-        
-        for i, synapse in enumerate(change):
+            next_data.extend(w)
+        diff = [next-current for next, current in zip(next_data, edata)]            
+        for i, synapse in enumerate(diff):
             if abs(synapse) > sys.float_info.epsilon or R:
-                e_ij = self.E[i]     
-                self.E[i] = e_ij * np.exp(-(t-time_ls[i])/tau_e) + eta * data_prev[i] * (1 - np.exp(-(t-time_ls[i])/tau_e))
-                time_ls[i] = t
-        return data, time_ls
+                etrace[i] = etrace[i] * np.exp(-(t-etime[i])/tau_e) + eta * next_data[i] * (1 - np.exp(-(t-etime[i])/tau_e))
+                etime[i] = t
+        return etrace, next_data, etime
 
-    def reward_etrace(self, lamb, R, row, col):
-        
-        self.W = lamb * self.W + R * scipy.sparse.coo_matrix((self.E, (row, col)), dtype=np.float32)
+    def reward_etrace(self, etrace, lamb, R, inputs_pre):   
+        row = []
+        col = []
+        for j in range(inputs_pre.shape[0]):
+            i = self.ij[j]
+            row.extend(i)
+            col.extend([j]*len(i))
+        self.W = lamb * self.W + R * scipy.sparse.coo_matrix((etrace, (row, col)), dtype=np.float32)
         
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")

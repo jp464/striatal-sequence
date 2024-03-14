@@ -1,3 +1,0 @@
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
-slurmstepd: error: *** JOB 43265627 ON dcc-brunellab-gpu-02 CANCELLED AT 2023-11-18T16:48:21 ***
-slurmstepd: error: *** STEP 43265627.0 ON dcc-brunellab-gpu-02 CANCELLED AT 2023-11-18T16:48:21 ***

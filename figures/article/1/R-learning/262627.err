@@ -1,0 +1,15 @@
+/var/spool/slurmd/job262627/slurm_script: line 12: fg: no job control
+INFO:connectivity:Building connections from ctx to ctx
+INFO:connectivity:Building connections from ctx to d1
+INFO:connectivity:Building connections from d1 to ctx
+INFO:connectivity:Building connections from d1 to d1
+INFO:network:Integrating network dynamics
+INFO:sequences:Computing overlaps
+  0%|          | 0/4 [00:00<?, ?it/s] 25%|██▌       | 1/4 [00:00<00:00,  3.39it/s]100%|██████████| 4/4 [00:00<00:00, 11.04it/s]
+INFO:sequences:Computing overlaps
+  0%|          | 0/4 [00:00<?, ?it/s]100%|██████████| 4/4 [00:00<00:00, 45.28it/s]
+Traceback (most recent call last):
+  File "code-learning.py", line 51, in <module>
+    behaviors=mouse.behaviors, corticostriatal=mouse.corticostriatal,
+AttributeError: 'ReachingTask' object has no attribute 'corticostriatal'
+srun: error: dcc-core-14: task 0: Exited with exit code 1
