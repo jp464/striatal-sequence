@@ -152,9 +152,9 @@ class RateNetwork(Network):
             fun = self._fun(tqdm(total=int(t/dt)-1),t)
             
         # Initial conditions                
-        state1 = np.zeros((self.pops[0].size, int((t-t0)/dt)))
+        state1 = np.zeros((self.pops[0].size, int((t-t0)/dt)+1))
         state1[:,0] = r1
-        state2 = np.zeros((self.pops[1].size, int((t-t0)/dt)))
+        state2 = np.zeros((self.pops[1].size, int((t-t0)/dt)+1))
         state2[:,0] = r2
                          
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):
