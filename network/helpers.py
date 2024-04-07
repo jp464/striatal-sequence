@@ -54,6 +54,16 @@ def hyperpolarize(hyperpolarize_dur, cur_action, action_dur, r_ext, thres=500, h
 def adder(L, i):
     return np.sum(L[0:i])
 
+class opto:
+    def __init__(self, size, density, strength, delay, duration, action):
+        self.strength = strength
+        self.duration = duration
+        self.delay = delay
+        self.action = action
+        self.time = 0
+        self.on = 0
+        self.stim = np.random.binomial(1, density, size) * strength
+        self.go = 1
     
         
         

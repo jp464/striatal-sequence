@@ -7,7 +7,7 @@ from tqdm import tqdm, trange
 import progressbar
 from numba import jit, njit
 from connectivity import Connectivity, LinearSynapse, corticostriatal
-from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize, compute_overlap
+from helpers import spike_to_rate, determine_action, action_transition, hyperpolarize, compute_overlap, opto
 from scipy.stats import pearsonr
 from learning import NetworkUpdateRule
 from transfer_functions import erf, ErrorFunction
@@ -78,7 +78,7 @@ class RateNetwork(Network):
     
     # params: mouse: mouse object to store behavioral data, t: simulation duration, r: initial firing rates, patterns: array of patterns, etrace_params: array of delta_t, tau_e, eta, lamb,
     # noise: stochastic noise to each neuron, e_bl: array of baseline values for each environmental varialbe, env: strength of environmental variables 
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, etrace_params, noise, b, env, 
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, etrace_params, noise, b, env, opto
                           learning=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.3, print_output=False, disable_pbar=True):
         logger.info("Integrating network dynamics")
         self.disable_pbar = disable_pbar
@@ -86,17 +86,19 @@ class RateNetwork(Network):
             pbar = progressbar
             fun = self._fun(pbar,t)
         else:
-            fun = self._fun(tqdm(total=int(t/dt)-1),t)
+            fun = self._fun(tqdm(total=int(t/dt)-1),t)        
         
         # ===================================================================================================================================
         # INITIALIZATION
         # ===================================================================================================================================
         states = np.zeros(self.Np, dtype=object)
-        w = np.zeros(len(patterns[0][0]))
+        w = np.zeros((len(patterns[0][0]), int((t-t0)/dt)))
         for i in range(self.Np):
             states[i] = np.zeros((self.pops[i].size, int((t-t0)/dt)))
             states[i][:,0] = r[i]
         self.r_ext = r_ext
+        
+        env_var = np.zeros((self.pops[0].size, int((t-t0)/dt)))
         
         # eligibility trace parameters  
         delta_t, tau_e, eta, lamb = etrace_params 
@@ -113,13 +115,13 @@ class RateNetwork(Network):
         # ===================================================================================================================================
         for i, t in enumerate(np.arange(t0, t, dt)[0:-1]):            
             ### Update firing rate and environmental variables 
-            dr, dw = fun(mouse, i, states, (w, b, env), patterns)
+            dr, dw = fun(mouse, i, states, (w[:,i], b, env), patterns, opto)
                 
             for k in range(self.Np):
                 white_noise = np.random.normal(size=self.pops[k].size) * noise[k]
                 states[k][:,i+1] = states[k][:,i] + dt * dr[k] + white_noise
-            for k in range(len(w)):
-                w[k] += dt * dw[k]
+            for k in range(len(patterns[0][0])):
+                w[k,i+1] = w[k,i] + dt * dw[k]
                 
             ### Update mouse behavior 
             mouse.action_dur += 1 
@@ -141,6 +143,7 @@ class RateNetwork(Network):
         # ===================================================================================================================================
         for k in range(self.Np):
             self.pops[k].state = np.hstack([self.pops[k].state, states[k][:self.pops[k].size,:]])
+        return w
     
     def simulate_euler2(self, t, r1, r2, t0=0, dt=1e-3, r_ext=lambda t: 0):
         logger.info("Integrating network dynamics")
@@ -287,40 +290,63 @@ class RateNetwork(Network):
         return f
     
     def _fun4(self, pbar, t_max):
-        def f(mouse, i, states, env_params, patterns):
+        def f(mouse, i, states, env_params, patterns, opto):
             # $ \frac{dx}{dt} = -x + \phi( \sum_{j} J_{ij} x_j + I_0 ) $
             if not self.disable_pbar:
                 pbar.update(1)
             phi_r = self.pops[0].phi
             r1, r2 = states[0][:,i], states[1][:,i]
             w, b, env = env_params 
-            overlaps = compute_overlap(states[0][:,i], patterns[0][0])
+            overlaps_ctx = compute_overlap(states[0][:,i], patterns[0][0])
+            overlaps_str = compute_overlap(states[1][:,i], patterns[1][0])
+            cur_action_ctx = np.argmax(overlaps_ctx)
+            if np.max(overlaps_ctx) > 0.23:
+                cur_action_str = np.argmax(overlaps_ctx)
+            else: cur_action_str = None
             
+            if opto.on == 0 and opto.go == 1:
+                if cur_action_str == opto.action:
+                    opto.time += 1
+                    if opto.time > opto.delay:
+                        opto.on = 1
+#                         opto.stim = patterns[1][0][opto.action]*opto.strength
+            else: opto.time += 1
+            
+            if opto.time > opto.delay+opto.duration:
+                opto.on = 0 
+                opto.go = 0
+
+            if cur_action_str != opto.action and cur_action_str != None:
+                opto.go = 1
+            
+            if opto.on:
+                r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](i) + opto.stim)
+
+            else:
+                r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](i))
+
             r_sum1 = phi_r((self.J[0][0].W.dot(r1) + self.J[1][0].W.dot(r2) + self.r_ext[0](i)) + env * mouse.env(w, patterns[0][0]))
-            r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](i))
             dr1 = (-r1 + r_sum1) / self.tau
             dr2 = (-r2 + r_sum2) / self.tau  
             dw = np.zeros(len(w), dtype='float')
             
             if env:
-                cur_action = np.argmax(overlaps)
                 tau = self.tau * 25
-                overlaps = [i * 0.8 for i in overlaps]
-                if cur_action == 0:
-                    dw[0] = (-w[0] + b[0] - overlaps[0]) / tau
-                    dw[1] = (-w[1] + b[1] + overlaps[0]*.1) / tau
-                    dw[2] = (-w[2] + b[2] + overlaps[0]*.1) / tau
-                    dw[3] = (-w[3] + b[3] - overlaps[3]) / tau
-                elif cur_action == 1:
-                    dw[0] = (-w[0] + b[0] - overlaps[0]) / tau
-                    dw[1] = (-w[1] + b[1] - overlaps[1]) / tau
-                    dw[2] = (-w[2] + b[2] + overlaps[1]*.1) / tau
-                    dw[3] = (-w[3] + b[3] - overlaps[3]) / tau        
+                overlaps_ctx = [i * 0.8 for i in overlaps_ctx]
+                if cur_action_ctx == 0:
+                    dw[0] = (-w[0] + b[0] - overlaps_ctx[0]) / tau
+                    dw[1] = (-w[1] + b[1] + overlaps_ctx[0]*.01) / tau
+                    dw[2] = (-w[2] + b[2] + overlaps_ctx[0]*.01) / tau
+                elif cur_action_ctx == 1:
+                    dw[0] = (-w[0] + b[0] - overlaps_ctx[0]) / tau
+                    dw[1] = (-w[1] + b[1] - overlaps_ctx[1]) / tau
+                    dw[2] = (-w[2] + b[2] + overlaps_ctx[1]*.01) / tau
+                    dw[3] = (-w[3] + b[3] - overlaps_ctx[3]) / tau        
                 else:
-                    dw[0] = (-w[0] + b[0] - overlaps[0]) / tau
-                    dw[1] = (-w[1] + b[1] - overlaps[1]) / tau
-                    dw[2] = (-w[2] + b[2] - overlaps[2]) / tau
-                    dw[3] = (-w[3] + b[3] - overlaps[3]) / tau            
+                    dw[0] = (-w[0] + b[0] - overlaps_ctx[0]) / tau
+                    dw[1] = (-w[1] + b[1] - overlaps_ctx[1]) / tau
+                    dw[2] = (-w[2] + b[2] - overlaps_ctx[2]) / tau
+                    dw[3] = (-w[3] + b[3] - overlaps_ctx[3]) / tau            
             
             return [dr1, dr2], dw
 

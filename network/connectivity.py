@@ -13,13 +13,20 @@ logger = logging.getLogger(__name__)
 
 # params: size: number of patterns, val: value of synaptic strength A, z: 1 if symmetric and 0 if asymmetric
 # returns the matrix of synaptic strength A between every pair of patterns for a given connectivity matrix 
-def cmatrix(M, idxs, val, loop=False):
-    for group in idxs:
-        for i in range(len(group)):
-            if i == len(group)-1:
-                if loop: M[group[i]][0] = val
-            else: M[group[i]][group[i+1]] = val
+def cmatrix(size, val, z):
+    M = np.zeros(size)
+    S, AS = z * val, (1-z) * val
+    for i in range(size[0]):
+        for j in range(size[1]):
+            if i == j:
+                M[i][j] = S
 
+    M[-1][0] = (1-z) * val
+    for i in range(size[0]):
+        for j in range(size[1]):
+            if i+1 == j:
+                M[i][j] = AS
+    return M  
 
 # params: pops: array of networks, cp: connection probabilty matrix, cw: sign constraint matrix, patterns: array of patterns, plasticity: learning rule functions 
 # returns block matrix of connectivity matrices 
@@ -28,15 +35,20 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
     for pop1 in range(len(pops)):
         rowblock = np.array([])
         for pop2 in range(len(pops)):
-            J = SparseConnectivity(source=pops[pop1], target=pops[pop2], p=cp[pop1][pop2])
+            J = SparseConnectivity(source=pops[pop1], target=pops[pop2],
+                                  p=cp[pop1][pop2])
             sign = cw[pop1][pop2]
             
-            Atemp = A[pop1][pop2]
-            for i in range(Atemp.shape[0]):
-                for j in range(Atemp.shape[1]):
-                    if Atemp[i][j] == 0: continue
-                    synapse = LinearSynapse(J.K, Atemp[i][j])
-                    J.update_sequences(patterns[pop1][i], patterns[pop2][j], synapse.h_EE, plasticity.f, plasticity.g)
+            for k in range(len(patterns[0])):
+                # store attractors or sequences 
+                Atemp = A[pop1][pop2]
+                for i in range(Atemp.shape[0]):
+                    for j in range(Atemp.shape[1]):
+                        if Atemp[i][j] == 0: continue
+                        synapse = LinearSynapse(J.K, Atemp[i][j])
+                        J.update_sequences(patterns[pop1][k][i],
+                                           patterns[pop2][k][j], synapse.h_EE,
+                                           plasticity.f, plasticity.g)
 
                 # sign constraint
                 if sign == 1:
@@ -50,7 +62,6 @@ def set_connectivity(pops, cp, cw, A, patterns, plasticity):
 
         Jmat = np.vstack((Jmat, rowblock)) if Jmat.size else rowblock
     return Jmat
-
 def corticostriatal_baby(J, patterns, p1, p2): 
     ij = J.ij
     W = J.W.toarray()

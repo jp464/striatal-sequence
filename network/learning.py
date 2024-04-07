@@ -27,18 +27,19 @@ class ReachingTask(Learning):
     def compute_barrier(self, a):
         if a == 0:
             self.barrier = 1
+        elif self.barrier == 1 and (self.water == 0 and (a == 1 or a == 2)):
+            pass
         else:
             self.barrier = 0
             
-    def compute_water(self, a0, a1):
-        if self.barrier == 1 and a1 == 1:
+    def compute_water(self, a):
+        if self.barrier == 1 and a == 1:
 #             self.w = np.random.binomial(1, .9, 1)[0]
             self.water = 1
         else: self.water = 0
     
     # Detect whether mouse received reward
     def compute_reward(self, a, reward=1):
-
         if self.water == 1 and a == 2:
             self.reward = reward
         else:
