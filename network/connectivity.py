@@ -212,27 +212,15 @@ class SparseConnectivity(Connectivity):
         W = scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32)
         self.W += W.tocsr()
         
-    def update_etrace(self, t, etrace, inputs_pre, inputs_post, eta, tau_e, edata, etime, R=0, f=lambda x:x, g=lambda x:x, disable_pbar=True):
-        next_data = []
-        for j in trange(inputs_pre.shape[0], disable=disable_pbar):
-            i = self.ij[j]
-            w = f(inputs_post[i]) * g(inputs_pre[j])
-            next_data.extend(w)
-        diff = [next-current for next, current in zip(next_data, edata)]            
-        for i, synapse in enumerate(diff):
-            if abs(synapse) > sys.float_info.epsilon or R:
-                etrace[i] = etrace[i] * np.exp(-(t-etime[i])/tau_e) + eta * next_data[i] * (1 - np.exp(-(t-etime[i])/tau_e))
-                etime[i] = t
-        return etrace, next_data, etime
+    def update_etrace(self, inputs_pre, inputs_post, eta, tau_e, h=lambda x:x, f=lambda x:x, g=lambda x:x):
+        N = inputs_post.shape[0]
+#         logger.info("Updating network")
+        data, row, col = Connectivity._update_sequences(self.ij, inputs_pre, inputs_post, f, g, disable_pbar=True)
+        dE = -(self.E / tau_e) + (scipy.sparse.coo_matrix((data, (row, col)), dtype=np.float32) * eta)
+        self.E += dE.tocsr()
 
-    def reward_etrace(self, etrace, lamb, R, inputs_pre):   
-        row = []
-        col = []
-        for j in range(inputs_pre.shape[0]):
-            i = self.ij[j]
-            row.extend(i)
-            col.extend([j]*len(i))
-        self.W = lamb * self.W + R * scipy.sparse.coo_matrix((etrace, (row, col)), dtype=np.float32)
+    def reward_etrace(self, lamb, R):
+        self.W = lamb * self.W + R * self.E
         
     def store_attractors(self, inputs_pre, inputs_post, h=lambda x:x, f=lambda x:x, g=lambda x:x, vary_A=False, A=None):
         logger.info("Storing attractors")

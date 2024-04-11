@@ -1,0 +1,11 @@
+/var/spool/slurmd/job6337891/slurm_script: line 12: fg: no job control
+INFO:connectivity:Building connections from ctx to ctx
+Traceback (most recent call last):
+  File "code-learning.py", line 31, in <module>
+    J = set_connectivity([ctx, d1], cp, cw, A, patterns, plasticity)
+  File "/hpc/home/jp464/striatal-sequence/figures/article/1/../../../network/connectivity.py", line 49, in set_connectivity
+    J.update_sequences(patterns[pop1][k][i],
+  File "/hpc/home/jp464/striatal-sequence/figures/article/1/../../../network/connectivity.py", line 209, in update_sequences
+    N = inputs_post.shape[0]
+AttributeError: 'float' object has no attribute 'shape'
+srun: error: dcc-core-15: task 0: Exited with exit code 1

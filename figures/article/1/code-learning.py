@@ -48,5 +48,4 @@ overlaps_d1 = sequences[1][0].overlaps(network.pops[1])
 np.savez('/work/jp464/striatum-sequence/' + filename + '.npz', 
          overlaps_ctx=overlaps_ctx, overlaps_d1=overlaps_d1,
          state_ctx=network.pops[0].state, state_d1=network.pops[1].state,
-         behaviors=mouse.behaviors, corticostriatal=mouse.corticostriatal,
-         evars=mouse.evars)
+         behaviors=mouse.behaviors, corticostriatal=mouse.corticostriatal)

@@ -64,6 +64,8 @@ class opto:
         self.on = 0
         self.stim = np.random.binomial(1, density, size) * strength
         self.go = 1
+        self.prev_action = None
+        self.stim_times = []
     
         
         

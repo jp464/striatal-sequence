@@ -78,8 +78,7 @@ class RateNetwork(Network):
     
     # params: mouse: mouse object to store behavioral data, t: simulation duration, r: initial firing rates, patterns: array of patterns, etrace_params: array of delta_t, tau_e, eta, lamb,
     # noise: stochastic noise to each neuron, e_bl: array of baseline values for each environmental varialbe, env: strength of environmental variables 
-    def simulate_learning(self, mouse, t, r, patterns, plasticity, etrace_params, noise, b, env, opto
-                          learning=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.3, print_output=False, disable_pbar=True):
+    def simulate_learning(self, mouse, t, r, patterns, plasticity, etrace_params, noise, b, env, opto, learning=True, t0=0, dt=1e-3, r_ext=lambda t: 0, detection_thres=0.3, print_output=False, disable_pbar=True):
         logger.info("Integrating network dynamics")
         self.disable_pbar = disable_pbar
         if self.disable_pbar:
@@ -131,13 +130,26 @@ class RateNetwork(Network):
             give_reward = (mouse.reward and mouse.action_dur > 100 and not mouse.drank_water)
             
             ### Update eligibility traces 
-            if learning and i-delta_t > 0:
-                etrace, edata, etime = self.J[0][1].update_etrace(t, etrace, states[0][:,i-delta_t], states[1][:,i+1], eta, tau_e, 
-                                       edata, etime, R=give_reward, f=plasticity.f, g=plasticity.g)
+
+            ### Update eligibility traces 
+            if i - delta_t > 0:
+                if print_output:
+                    pre = determine_action(states[0][:,i-delta_t], patterns[0], thres=0.15)
+                    post = determine_action(states[1][:,i+1], patterns[1], thres=0.15)
+                    
+#                     if eprev == [pre, post]:
+#                         ecnt += 1
+#                     else:
+#                         print(eprev, ecnt)
+#                         ecnt = 0
+#                         eprev = [pre, post]
+                if etrace:
+                    self.J[0][1].update_etrace(states[0][:,i-delta_t], states[1][:,i+1], eta=eta, tau_e=tau_e, f=plasticity.f, g=plasticity.g)
+                
             if give_reward:
                 mouse.drank_water = 1
                 if print_output: print('Mouse drank water')
-                if learning: self.J[0][1].reward_etrace(etrace, lamb, R=1, inputs_pre=states[0][:,1])
+                if learning: self.J[0][1].reward_etrace(lamb, R=1)
         # ===================================================================================================================================
         # SAVE 
         # ===================================================================================================================================
@@ -299,27 +311,28 @@ class RateNetwork(Network):
             w, b, env = env_params 
             overlaps_ctx = compute_overlap(states[0][:,i], patterns[0][0])
             overlaps_str = compute_overlap(states[1][:,i], patterns[1][0])
-            cur_action_ctx = np.argmax(overlaps_ctx)
             if np.max(overlaps_ctx) > 0.23:
-                cur_action_str = np.argmax(overlaps_ctx)
-            else: cur_action_str = None
+                cur_action_ctx = np.argmax(overlaps_ctx)
+            else: cur_action_ctx = None
             
+            if opto.go == 0 and opto.action == cur_action_ctx and opto.prev_action != opto.action:
+                opto.go = 1
+            if cur_action_ctx != None: opto.prev_action = cur_action_ctx
+                
             if opto.on == 0 and opto.go == 1:
-                if cur_action_str == opto.action:
-                    opto.time += 1
-                    if opto.time > opto.delay:
-                        opto.on = 1
-#                         opto.stim = patterns[1][0][opto.action]*opto.strength
-            else: opto.time += 1
+                opto.time += 1
+                if opto.time > opto.delay: 
+                    opto.stim_times.append(i)
+                    opto.on = 1
+                    opto.stim = patterns[1][0][2]*opto.strength
             
             if opto.time > opto.delay+opto.duration:
                 opto.on = 0 
                 opto.go = 0
-
-            if cur_action_str != opto.action and cur_action_str != None:
-                opto.go = 1
+                opto.time = 0
             
             if opto.on:
+                opto.time += 1
                 r_sum2 = phi_r(self.J[1][1].W.dot(r2) + self.J[0][1].W.dot(r1) + self.r_ext[1](i) + opto.stim)
 
             else:
@@ -333,14 +346,15 @@ class RateNetwork(Network):
             if env:
                 tau = self.tau * 25
                 overlaps_ctx = [i * 0.8 for i in overlaps_ctx]
-                if cur_action_ctx == 0:
+                if np.argmax(overlaps_ctx) == 0:
                     dw[0] = (-w[0] + b[0] - overlaps_ctx[0]) / tau
-                    dw[1] = (-w[1] + b[1] + overlaps_ctx[0]*.01) / tau
-                    dw[2] = (-w[2] + b[2] + overlaps_ctx[0]*.01) / tau
-                elif cur_action_ctx == 1:
+                    dw[1] = (-w[1] + b[1] + overlaps_ctx[0]*.1) / tau
+                    dw[2] = (-w[2] + b[2] + overlaps_ctx[0]*.1) / tau
+                    dw[3] = (-w[3] + b[3] - overlaps_ctx[3]) / tau  
+                elif np.argmax(overlaps_ctx) == 1:
                     dw[0] = (-w[0] + b[0] - overlaps_ctx[0]) / tau
                     dw[1] = (-w[1] + b[1] - overlaps_ctx[1]) / tau
-                    dw[2] = (-w[2] + b[2] + overlaps_ctx[1]*.01) / tau
+                    dw[2] = (-w[2] + b[2] + overlaps_ctx[1]*.1) / tau
                     dw[3] = (-w[3] + b[3] - overlaps_ctx[3]) / tau        
                 else:
                     dw[0] = (-w[0] + b[0] - overlaps_ctx[0]) / tau

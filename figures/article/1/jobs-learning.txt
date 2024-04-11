@@ -1,2 +1,2 @@
-python code-learning.py L01 40 0.002 1000 0.9 30 0.013
-python code-learning.py L01 45 0.002 1000 0.9 30 0.013
+python code-learning.py L01 40 0.002 1000 0.9 0.1 0.013
+python code-learning.py L01 45 0.002 1000 0.9 0.1 0.013
